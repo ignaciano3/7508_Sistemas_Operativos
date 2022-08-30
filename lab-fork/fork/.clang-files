@@ -1,4 +1,4 @@
-find.c
-pingpong.c
-primes.c
-xargs.c
+lab-fork/fork/find.c
+lab-fork/fork/pingpong.c
+lab-fork/fork/primes.c
+lab-fork/fork/xargs.c

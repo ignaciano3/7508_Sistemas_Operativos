@@ -10,8 +10,8 @@ const int OK_ID = 0;
 int
 main(void)
 {
-	int file_descriptor_1[2];  // Padre lee de fds_1[0], Hijo escribe de fds_1[1] (Hijo ---> Padre)
-	int file_descriptor_2[2];  // Hijo lee de fds_2[0], Padre escribe de fds_2[1] (Padre ---> Hijo)
+	int file_descriptor_1[2];  // Padre lee de fds_1[0], Hijo escribe de fds_1[1] (Padre <--- Hijo)
+	int file_descriptor_2[2];  // Hijo lee de fds_2[0], Padre escribe de fds_2[1] (Hijo <--- Padre)
 
 	// CREACION DE PIPES
 	int result_pipe = pipe(file_descriptor_1);
@@ -34,11 +34,11 @@ main(void)
 	};
 
 	const int pid_padre = getpid();
-	printf("\nHola, soy PID <%i>:", pid_padre);
-	printf("\n\t - primer pipe me devuelve: [%i, %i]",
+	printf("\nHola, soy PID %i:", pid_padre);
+	printf("\n\t- primer pipe me devuelve: [%i, %i]",
 	       file_descriptor_1[0],
 	       file_descriptor_1[1]);
-	printf("\n\t - segundo pipe me devuelve: [%i, %i]",
+	printf("\n\t- segundo pipe me devuelve: [%i, %i]",
 	       file_descriptor_2[0],
 	       file_descriptor_2[1]);
 
@@ -58,10 +58,23 @@ main(void)
 	};
 
 	// RANDOM DENTRO DE CADA PROCESO
-	long msg = random();
+	long msg_to_send = random();
 
-	// if () {
-	// };
+	if (result_fork != 0) {  // Estoy en el proceso padre
+		printf("\nDonde fork me devuelve %i", result_fork);
+	} else {  // Estoy en el proceso hijo
+
+		// cierro el fds que no voy a usar en este proceso (las "entradas" del padre)
+		close(file_descriptor_1[0]);
+		close(file_descriptor_2[1]);
+
+		// recibo el mensaje (bloqueo aca para que esto se imprima siempre despues de que el padre me contacte)
+		long received_msg;
+		read(file_descriptor_2[0], &received_msg, sizeof(long));
+
+
+		printf("\nDonde fork me devuelve %i", result_fork);
+	};
 
 
 	return OK_ID;

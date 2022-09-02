@@ -1,7 +1,7 @@
-CFLAGS := -ggdb3 -O0 -Wall -Wextra -std=c11 #-O2 original
+CFLAGS := -ggdb3 -O2 -Wall -Wextra -std=c11 #-O2 original
 CFLAGS += -Wmissing-prototypes -Wvla
 CPPFLAGS := -D_DEFAULT_SOURCE
-VFLAGS=--leak-check=full --track-origins=yes --track-fds=all --show-reachable=yes --error-exitcode=2
+VFLAGS=--leak-check=full --track-origins=yes --track-fds=yes --show-reachable=yes --error-exitcode=-1 --quiet
 
 PROGS := pingpong primes find xargs
 

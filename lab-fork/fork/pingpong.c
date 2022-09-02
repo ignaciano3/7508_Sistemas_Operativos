@@ -114,7 +114,8 @@ handle_parent_comms(int forking_result, int fds_1[], int fds_2[])
 
 	int writing_result = write(fds_2[1], &msg_to_send, sizeof(long));
 	if (writing_result < OK_ID) {
-		// ... cerrar cosas
+		close(fds_1[0]);
+		close(fds_2[1]);
 		return ERROR_ID;
 	};
 
@@ -123,7 +124,8 @@ handle_parent_comms(int forking_result, int fds_1[], int fds_2[])
 	long received_msg;
 	int reading_result = read(fds_1[0], &received_msg, sizeof(long));
 	if (reading_result < OK_ID) {
-		// ... cerrar cosas
+		close(fds_1[0]);
+		close(fds_2[1]);
 		return ERROR_ID;
 	}
 
@@ -147,7 +149,8 @@ handle_child_comms(int forking_result, int fds_1[], int fds_2[])
 	long received_msg;
 	int reading_result = read(fds_2[0], &received_msg, sizeof(long));
 	if (reading_result < OK_ID) {
-		// ... cerrar cosas
+		close(fds_1[0]);
+		close(fds_2[1]);
 		return ERROR_ID;
 	}
 
@@ -159,7 +162,8 @@ handle_child_comms(int forking_result, int fds_1[], int fds_2[])
 
 	int writing_result = write(fds_1[1], &received_msg, sizeof(long));
 	if (writing_result < OK_ID) {
-		// ... cerrar cosas
+		close(fds_1[0]);
+		close(fds_2[1]);
 		return ERROR_ID;
 	};
 

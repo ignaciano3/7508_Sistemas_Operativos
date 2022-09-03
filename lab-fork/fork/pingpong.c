@@ -12,7 +12,7 @@ int create_dual_pipes(int fds_1[], int fds_2[]);
 
 void greet_before_fork(int fds_1[], int fds_2[]);
 
-int am_the_child_process(int forking_result);
+int am_the_parent_process(int forking_result);
 
 int handle_parent_comms(int forking_result, int fds_1[], int fds_2[]);
 
@@ -92,9 +92,9 @@ greet_before_fork(int fds_1[], int fds_2[])
 }
 
 int
-am_the_child_process(int forking_result)
+am_the_parent_process(int forking_result)
 {
-	return forking_result == 0;
+	return forking_result != 0;
 }
 
 int
@@ -175,7 +175,7 @@ handle_child_comms(int forking_result, int fds_1[], int fds_2[])
 int
 handle_parent_and_child_behavior(int forking_result, int fds_1[], int fds_2[])
 {
-	if (!am_the_child_process(forking_result)) {  // Estoy en el proceso padre
+	if (am_the_parent_process(forking_result)) {
 		return handle_parent_comms(forking_result, fds_1, fds_2);
 
 	} else {  // Estoy en el proceso hijo

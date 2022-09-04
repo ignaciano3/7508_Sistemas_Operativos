@@ -1,11 +1,11 @@
 CFLAGS := -ggdb3 -O2 -Wall -Wextra -std=c11
 CFLAGS += -Wmissing-prototypes -Wvla
 CPPFLAGS := -D_DEFAULT_SOURCE
-VFLAGS=--leak-check=full --track-origins=yes --track-fds=yes --show-reachable=yes --error-exitcode=-1 --quiet
+VFLAGS:=--leak-check=full --track-origins=yes --track-fds=yes --show-reachable=yes --error-exitcode=-1 --quiet
 
 PROGS := pingpong primes find xargs
 
-PRIMES_ARGS ?= 10
+PRIMES_ARG ?= 10
 
 all: $(PROGS)
 
@@ -26,31 +26,31 @@ clean:
 # =========================================================================
 
 comp_pingpong: pingpong.c
-	gcc $(CFLAGS) -o pingpong.out pingpong.c
+	gcc $(CFLAGS) pingpong.c -o pingpong.o
 
 valgrind_pingpong: comp_pingpong
-	valgrind $(VFLAGS) ./pingpong.out
+	valgrind $(VFLAGS) ./pingpong.o
 
 # =========================================================================
 
 comp_primes: primes.c
-	gcc $(CFLAGS) -o primes.out primes.c
+	gcc $(CFLAGS) primes.c -o primes.o
 
 valgrind_primes: comp_primes
-	valgrind $(VFLAGS) ./primes.out $(PRIMES_ARGS)
+	valgrind $(VFLAGS) ./primes.o $(PRIMES_ARG)
 
 # =========================================================================
 
 comp_find: find.c
-	gcc $(CFLAGS) -o find.out find.c
+	gcc $(CFLAGS) find.c -o find.o
 
 valgrind_find: comp_find
-	valgrind $(VFLAGS) ./find.out
+	valgrind $(VFLAGS) ./find.o
 
 # =========================================================================
 
 comp_xargs: xargs.c
-	gcc $(CFLAGS) -o xargs.out xargs.c
+	gcc $(CFLAGS) xargs.c -o xargs.o
 
 valgrind_xargs: comp_xargs
 	valgrind $(VFLAGS) ./xargs.out

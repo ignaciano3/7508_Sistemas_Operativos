@@ -88,7 +88,14 @@ is_str_contained_case_insensitive(const char *haystack, const char *needle)
 	return (strcasestr(haystack, needle) != NULL);
 }
 
-
+// Revisa el estado de los argumentos recibidos.
+// Devuelve -1 (ERROR_ID) cuando:
+//  - No hubo suficientes argumentos
+//  - Hubo demasiados argumentos
+//  - El tamaño del str a encontrar es demasiado grande
+// En casos normales, devuelve:
+//  - 0 (REQUIRES_CASE_SENSITIVE) si se recibió la opción -i
+//  - 1 (REQUIRES_CASE_INSENSITIVE) si solo se recibió el str a buscar
 int
 check_args(int argc, char *argv[], char str_to_find[])
 {
@@ -132,6 +139,10 @@ create_subdir_path(char current_path[], char subdir_path[], char *subdir_name)
 	strcat(subdir_path, "/");
 }
 
+// Realiza la busqueda del str pedido en el directorio de forma recursiva.
+// Devuelve 0 (OK_ID) si pudo realizar la busqueda sin problema (aunque no lo
+// haya encontrado). Devuelve -1 (ERROR_ID) si hubo algún error al abrir
+// subdirectorios. En caso de encontrar el str imprime el path correspondiente
 int
 find_all_matches_within(DIR *directory,
                         char *current_path,

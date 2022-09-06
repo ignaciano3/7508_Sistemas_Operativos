@@ -65,7 +65,11 @@ main(int argc, char *argv[])
 	return OK_ID;
 }
 
-
+// Almacena continuamente las lineas correspondientes a argumentos necesarios para
+// la ejecución de un comando. Durante ese proceso, cuando tiene suficientes
+// argumentos solicita la ejecución del comando mencionado.
+// Devuelve -1 (ERROR_ID) si hubo algun problema en la ejecución del comando
+// Devuelve 0 (OK_ID) en caso contrario.
 int
 collect_all_args_and_execute_commands(char **args_for_the_required_command,
                                       char *required_command)
@@ -130,6 +134,10 @@ collect_all_args_and_execute_commands(char **args_for_the_required_command,
 	return OK_ID;
 }
 
+// Realiza fork para hacer exec desde el nuevo proceso encargado de llevar a
+// cabo el comando requerido, con los argumentos pedidos (previamente
+// recolectados). Devuelve -1 (ERROR_ID) en caso de error en alguna de las
+// syscalls. Devuelve 0 (OK_ID) en el caso exitoso del proceso padre unicamente.
 int
 execute_command_with_args(char **args_for_the_required_command,
                           int amount_of_args,
@@ -181,6 +189,8 @@ stored_enough_args_for_execution(int amount_of_args)
 	return (amount_of_args == NARGS);
 }
 
+// Funcion auxiliar para liberar el ultimo resultado con error de getline.
+// Causado porque getline hace alloc en heap aún cuando falla.
 void
 free_last_getline_buf_only(char **args, int amount_of_args)
 {
@@ -188,6 +198,8 @@ free_last_getline_buf_only(char **args, int amount_of_args)
 	args[amount_of_args] = NULL;
 }
 
+// Libera todos los allocs causados por getline en el vector usado para
+// almacenar argumentos de los comandos a ejecutar.
 void
 free_all_stored_args(char **args, int amount_of_args)
 {

@@ -27,8 +27,8 @@ main(void)
 {
 	srand(time(NULL));
 
-	int fds_1[2];  // Padre lee de fds_1[0], Hijo escribe de fds_1[1] (Padre <--- Hijo)
-	int fds_2[2];  // Hijo lee de fds_2[0], Padre escribe de fds_2[1] (Hijo <--- Padre)
+	int fds_1[2];
+	int fds_2[2];
 
 	int pipes_creation_result = create_dual_pipes(fds_1, fds_2);
 	if (pipes_creation_result < OK_ID) {
@@ -75,9 +75,10 @@ create_dual_pipes(int fds_1[], int fds_2[])
 void
 greet_before_fork(int fds_1[], int fds_2[])
 {
-	printf("\nHola, soy PID %i:\n", getpid());
-	printf("- primer pipe me devuelve: [%i, %i]\n", fds_1[0], fds_1[1]);
-	printf("- segundo pipe me devuelve: [%i, %i]\n", fds_2[0], fds_2[1]);
+	printf("Hola, soy PID %i:", getpid());
+	printf("\n");
+	printf("  - primer pipe me devuelve: [%i, %i]\n", fds_1[0], fds_1[1]);
+	printf("  - segundo pipe me devuelve: [%i, %i]\n", fds_2[0], fds_2[1]);
 }
 
 bool
@@ -90,65 +91,28 @@ int
 handle_interaction_as_parent(int forking_result, int fds_1[], int fds_2[])
 {
 	// cierro los fds que no voy a usar en este proceso (los ends del hijo)
-	close(fds_2[0]);
-	close(fds_1[1]);
+	close(fds_1[0]);
+	close(fds_2[1]);
 
 	long msg_to_send = rand();
 
-	printf("\n\n");
-	printf("Donde fork me devuelve %i\n", forking_result);
-	printf("- getpid me devuelve: %i\n", getpid());
-	printf("- getppid me devuelve: %i\n", getppid());
-	printf("- random me devuelve: %li\n", msg_to_send);
-	printf("- envio valor %li a través de fd=%i\n", msg_to_send, fds_2[1]);
+	printf("\n");
+	printf("Donde fork me devuelve %i:\n", forking_result);
+	printf("  - getpid me devuelve: %i\n", getpid());
+	printf("  - getppid me devuelve: %i\n", getppid());
+	printf("  - random me devuelve: %li\n", msg_to_send);
+	printf("  - envío valor %li a través de fd=%i\n", msg_to_send, fds_1[1]);
 
-	int writing_result = write(fds_2[1], &msg_to_send, sizeof(long));
+	int writing_result = write(fds_1[1], &msg_to_send, sizeof(long));
 	if (writing_result < OK_ID) {
 		perror("Error writing: ");
-		close(fds_1[0]);
-		close(fds_2[1]);
+		close(fds_2[0]);
+		close(fds_1[1]);
 		return ERROR_ID;
 	};
 
 	// Ahora se lee y se bloquea hasta que responda el hijo
 
-	long received_msg;
-	int reading_result = read(fds_1[0], &received_msg, sizeof(long));
-	if (reading_result < OK_ID) {
-		perror("Error reading: ");
-		close(fds_1[0]);
-		close(fds_2[1]);
-		return ERROR_ID;
-	} else if (reading_result == OK_ID) {
-		close(fds_1[0]);
-		close(fds_2[1]);
-		return ERROR_ID;
-	}
-
-	printf("\n");
-	printf("Hola, de nuevo PID %i:\n", getpid());
-	printf("- recibi valor %li via fd=%i\n", received_msg, fds_1[0]);
-
-	close(fds_1[0]);
-	close(fds_2[1]);
-
-	int waiting_result = wait(NULL);
-	if (waiting_result == ERROR_ID) {
-		perror("Error waiting for child: ");
-		return ERROR_ID;
-	}
-
-	return OK_ID;
-}
-
-int
-handle_interaction_as_child(int forking_result, int fds_1[], int fds_2[])
-{
-	// cierro los fds que no voy a usar en este proceso (los ends del padre)
-	close(fds_1[0]);
-	close(fds_2[1]);
-
-	// recibo el mensaje (bloqueo aca para que esto espere hasta despues de que el padre me contacte)
 	long received_msg;
 	int reading_result = read(fds_2[0], &received_msg, sizeof(long));
 	if (reading_result < OK_ID) {
@@ -163,25 +127,64 @@ handle_interaction_as_child(int forking_result, int fds_1[], int fds_2[])
 	}
 
 	printf("\n");
-	printf("Donde fork me devuelve %i:\n", forking_result);
-	printf("- getpid me devuelve: %i\n", getpid());
-	printf("- getppid me devuelve: %i\n", getppid());
-	printf("- recibo valor %li via fd=%i\n", received_msg, fds_2[0]);
-	printf("- reenvio valor en fd=%i y termino\n", fds_1[1]);
-
-	int writing_result = write(fds_1[1], &received_msg, sizeof(long));
-	if (writing_result < OK_ID) {
-		perror("Error writing: ");
-		close(fds_2[0]);
-		close(fds_1[1]);
-		return ERROR_ID;
-	};
+	printf("Hola, de nuevo PID %i:\n", getpid());
+	printf("  - recibí valor %li vía fd=%i\n", received_msg, fds_2[0]);
 
 	close(fds_2[0]);
 	close(fds_1[1]);
+
+	int waiting_result = wait(NULL);
+	if (waiting_result == ERROR_ID) {
+		perror("Error waiting for child: ");
+		return ERROR_ID;
+	}
+
 	return OK_ID;
 }
 
+int
+handle_interaction_as_child(int forking_result, int fds_1[], int fds_2[])
+{
+	// cierro los fds que no voy a usar en este proceso (los ends del padre)
+	close(fds_2[0]);
+	close(fds_1[1]);
+
+	// recibo el mensaje (bloqueo aca para que esto espere hasta despues de que el padre me contacte)
+	long received_msg;
+	int reading_result = read(fds_1[0], &received_msg, sizeof(long));
+	if (reading_result < OK_ID) {
+		perror("Error reading: ");
+		close(fds_1[0]);
+		close(fds_2[1]);
+		return ERROR_ID;
+	} else if (reading_result == OK_ID) {
+		close(fds_1[0]);
+		close(fds_2[1]);
+		return ERROR_ID;
+	}
+
+	printf("\n");
+	printf("Donde fork me devuelve %i:\n", forking_result);
+	printf("  - getpid me devuelve: %i\n", getpid());
+	printf("  - getppid me devuelve: %i\n", getppid());
+	printf("  - recibo valor %li vía fd=%i\n", received_msg, fds_1[0]);
+	printf("  - reenvío valor en fd=%i y termino\n", fds_2[1]);
+
+	int writing_result = write(fds_2[1], &received_msg, sizeof(long));
+	if (writing_result < OK_ID) {
+		perror("Error writing: ");
+		close(fds_1[0]);
+		close(fds_2[1]);
+		return ERROR_ID;
+	};
+
+	close(fds_1[0]);
+	close(fds_2[1]);
+	return OK_ID;
+}
+
+// HIJO lee de fds_1[0], PADRE escribe de fds_1[1] (HIJO <--- PADRE)
+// PADRE lee de fds_2[0], HIJO escribe de fds_2[1] (PADRE <--- HIJO)
 int
 handle_pingpong_interactions(int forking_result, int fds_1[], int fds_2[])
 {

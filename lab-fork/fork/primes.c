@@ -9,6 +9,10 @@
 const int ERROR_ID = -1;
 const int OK_ID = 0;
 
+const int MIN_NUM_AND_ARGS = 2;
+const char *WRONG_ARGS = "\nError: Necesito un numero natural >= 2 como "
+                         "argumento\n";
+
 
 bool am_the_current_parent_process(int forking_result);
 
@@ -23,15 +27,13 @@ int handle_myself_as_relative_parent(int receiver_fds,
 int
 main(int argc, char *argv[])
 {
-	if (argc != 2) {
-		printf("\nError: Necesito un numero natural >= 2 como "
-		       "argumento\n");
+	if (argc != MIN_NUM_AND_ARGS) {
+		printf("%s", WRONG_ARGS);
 		return ERROR_ID;
 	}
 	int max_number_required = strtol(argv[1], NULL, 10);
-	if (max_number_required < 2) {
-		printf("\nError: Necesito un numero natural >= 2 como "
-		       "argumento\n");
+	if (max_number_required < MIN_NUM_AND_ARGS) {
+		printf("%s", WRONG_ARGS);
 		return ERROR_ID;
 	};
 
@@ -76,7 +78,6 @@ main(int argc, char *argv[])
 			return ERROR_ID;
 		}
 	}
-
 
 	return OK_ID;
 }
@@ -144,7 +145,6 @@ handle_my_relative_child(int receiver_fds)
 		} else if (parent_result == ERROR_ID) {
 			return ERROR_ID;
 		}
-
 
 	} else {
 		close(fds_aux[1]);  // no le voy a enviar nada al padre actual

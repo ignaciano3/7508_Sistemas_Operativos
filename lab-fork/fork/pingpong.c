@@ -15,23 +15,21 @@ void greet_before_fork(int fds_1[], int fds_2[]);
 
 bool am_the_parent_process(int forking_result);
 
-int handle_parent_comms(int forking_result, int fds_1[], int fds_2[]);
+int handle_interaction_as_parent(int forking_result, int fds_1[], int fds_2[]);
 
-int handle_child_comms(int forking_result, int fds_1[], int fds_2[]);
+int handle_interaction_as_child(int forking_result, int fds_1[], int fds_2[]);
 
-int handle_parent_and_child_behavior(int forking_result, int fds_1[], int fds_2[]);
+int handle_pingpong_interactions(int forking_result, int fds_1[], int fds_2[]);
 
 
 int
 main(void)
 {
-	// SET DE LA SEED PARA RAND
 	srand(time(NULL));
 
 	int fds_1[2];  // Padre lee de fds_1[0], Hijo escribe de fds_1[1] (Padre <--- Hijo)
 	int fds_2[2];  // Hijo lee de fds_2[0], Padre escribe de fds_2[1] (Hijo <--- Padre)
 
-	// CREACION DE PIPES
 	int pipes_creation_result = create_dual_pipes(fds_1, fds_2);
 	if (pipes_creation_result < OK_ID) {
 		return ERROR_ID;
@@ -39,10 +37,9 @@ main(void)
 
 	greet_before_fork(fds_1, fds_2);
 
-	// FORK
 	int forking_result = fork();
 	if (forking_result < OK_ID) {
-		fprintf(stderr, "\n  %s: %i\n", "Error del fork", forking_result);
+		perror("Error del fork");
 		close(fds_1[0]);
 		close(fds_1[1]);
 		close(fds_2[0]);
@@ -50,12 +47,9 @@ main(void)
 		return ERROR_ID;
 	};
 
-	return handle_parent_and_child_behavior(forking_result, fds_1, fds_2);
+	return handle_pingpong_interactions(forking_result, fds_1, fds_2);
 }
 
-// Problema actual: es como que permanece el mensaje de la segunda impresion de
-// pipes en el greet, o sea que hay que correr los dos ultimos prints de cada
-// una de las dos ultimas categorias para arriba
 
 // ================================================================================
 
@@ -64,18 +58,12 @@ create_dual_pipes(int fds_1[], int fds_2[])
 {
 	int result_pipe = pipe(fds_1);
 	if (result_pipe < OK_ID) {
-		fprintf(stderr,
-		        "\n  %s: %i\n",
-		        "Error de creacion de fds_1 por pipe",
-		        result_pipe);
+		perror("Error de creacion de fds_1 por pipe");
 		return ERROR_ID;
 	};
 	result_pipe = pipe(fds_2);
 	if (result_pipe < OK_ID) {
-		fprintf(stderr,
-		        "\n  %s: %i\n",
-		        "Error de creacion de fds_2 por pipe",
-		        result_pipe);
+		perror("Error de creacion de fds_2 por pipe");
 		close(fds_1[0]);
 		close(fds_1[1]);
 		return ERROR_ID;
@@ -99,7 +87,7 @@ am_the_parent_process(int forking_result)
 }
 
 int
-handle_parent_comms(int forking_result, int fds_1[], int fds_2[])
+handle_interaction_as_parent(int forking_result, int fds_1[], int fds_2[])
 {
 	// cierro los fds que no voy a usar en este proceso (los ends del hijo)
 	close(fds_2[0]);
@@ -154,7 +142,7 @@ handle_parent_comms(int forking_result, int fds_1[], int fds_2[])
 }
 
 int
-handle_child_comms(int forking_result, int fds_1[], int fds_2[])
+handle_interaction_as_child(int forking_result, int fds_1[], int fds_2[])
 {
 	// cierro los fds que no voy a usar en este proceso (los ends del padre)
 	close(fds_1[0]);
@@ -195,12 +183,12 @@ handle_child_comms(int forking_result, int fds_1[], int fds_2[])
 }
 
 int
-handle_parent_and_child_behavior(int forking_result, int fds_1[], int fds_2[])
+handle_pingpong_interactions(int forking_result, int fds_1[], int fds_2[])
 {
 	if (am_the_parent_process(forking_result)) {
-		return handle_parent_comms(forking_result, fds_1, fds_2);
+		return handle_interaction_as_parent(forking_result, fds_1, fds_2);
 
 	} else {  // Estoy en el proceso hijo
-		return handle_child_comms(forking_result, fds_1, fds_2);
+		return handle_interaction_as_child(forking_result, fds_1, fds_2);
 	};
 }

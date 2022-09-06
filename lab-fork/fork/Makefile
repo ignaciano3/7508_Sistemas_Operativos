@@ -1,11 +1,16 @@
 CFLAGS := -ggdb3 -O2 -Wall -Wextra -std=c11
 CFLAGS += -Wmissing-prototypes -Wvla
 CPPFLAGS := -D_DEFAULT_SOURCE
-VFLAGS:=--leak-check=full --track-origins=yes --track-fds=yes --show-reachable=yes --error-exitcode=-1 --quiet
 
 PROGS := pingpong primes find xargs
 
+VFLAGS:=--leak-check=full --track-origins=yes --track-fds=yes --show-reachable=yes --error-exitcode=-1 --quiet
+
 PRIMES_ARG ?= 10
+
+FIND_ARGS ?= -i .c
+
+XARGS_ARG ?= ls
 
 all: $(PROGS)
 
@@ -22,6 +27,8 @@ format: .clang-files .clang-format
 
 clean:
 	rm -f $(PROGS) *.o core vgcore.*
+
+
 
 # =========================================================================
 
@@ -45,7 +52,7 @@ comp_find: find.c
 	gcc $(CFLAGS) find.c -o find.o
 
 valgrind_find: comp_find
-	valgrind $(VFLAGS) ./find.o
+	valgrind $(VFLAGS) ./find.o $(FIND_ARGS)
 
 # =========================================================================
 
@@ -53,9 +60,10 @@ comp_xargs: xargs.c
 	gcc $(CFLAGS) xargs.c -o xargs.o
 
 valgrind_xargs: comp_xargs
-	valgrind $(VFLAGS) ./xargs.out
+	valgrind $(VFLAGS) ./xargs.o $(XARGS_ARG)
 
 # =========================================================================
+
 
 
 .PHONY: all clean format

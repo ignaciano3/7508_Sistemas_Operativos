@@ -18,7 +18,7 @@ bool am_the_current_parent_process(int forking_result);
 
 int handle_myself_as_absolute_parent(int max_number_required, int sender_fds);
 
-int handle_my_relative_child(int receiver_fds);
+int handle_myself_as_relative_child(int receiver_fds);
 
 int handle_myself_as_relative_parent(int receiver_fds,
                                      int sender_fds,
@@ -72,7 +72,7 @@ main(int argc, char *argv[])
 	} else {  // Estoy en el proceso hijo
 		// Cierro el punto de escritura ya que no me voy a recomunicar con el padre
 		close(fds[1]);
-		int child_result = handle_my_relative_child(fds[0]);
+		int child_result = handle_myself_as_relative_child(fds[0]);
 		close(fds[0]);
 		if (child_result < OK_ID) {
 			return ERROR_ID;
@@ -103,7 +103,7 @@ handle_myself_as_absolute_parent(int max_number_required, int sender_fds)
 }
 
 int
-handle_my_relative_child(int receiver_fds)
+handle_myself_as_relative_child(int receiver_fds)
 {
 	int first_number_received;  // lo que seria "p" del ejemplo
 	int reading_result =
@@ -136,6 +136,7 @@ handle_my_relative_child(int receiver_fds)
 		close(fds_aux[0]);
 		int parent_result = handle_myself_as_relative_parent(
 		        receiver_fds, fds_aux[1], first_number_received);
+		close(receiver_fds);
 		close(fds_aux[1]);
 
 		int waiting_result = wait(NULL);
@@ -147,9 +148,11 @@ handle_my_relative_child(int receiver_fds)
 		}
 
 	} else {
-		close(fds_aux[1]);  // no le voy a enviar nada al padre actual
-		int child_result = handle_my_relative_child(fds_aux[0]);
+		close(fds_aux[1]);    // no le voy a enviar nada al padre actual
+		close(receiver_fds);  // ni tampoco voy a recibir del abuelo
+		int child_result = handle_myself_as_relative_child(fds_aux[0]);
 		close(fds_aux[0]);
+
 		if (child_result < OK_ID) {
 			return ERROR_ID;
 		}

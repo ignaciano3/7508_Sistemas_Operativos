@@ -93,18 +93,19 @@ void
 exec_cmd(struct cmd *cmd)
 {
 	// To be used in the different cases
-	struct execcmd *e;
-	struct backcmd *b;
-	struct execcmd *r;
-	struct pipecmd *p;
+	struct execcmd *exec_command;
+	struct backcmd *back_command;
+	struct execcmd *redir_command;
+	struct pipecmd *pipe_command;
 
 	switch (cmd->type) {
 	case EXEC:
 		// spawns a command
 
-		e = (struct execcmd *) cmd;
-		set_environ_vars(e->eargv, e->eargc);
-		int exec_result = execvp(e->argv[0], e->argv);
+		exec_command = (struct execcmd *) cmd;
+		set_environ_vars(exec_command->eargv, exec_command->eargc);
+		int exec_result =
+		        execvp(exec_command->argv[0], exec_command->argv);
 		check_for_syscall_error(exec_result);
 
 		break;
@@ -112,8 +113,8 @@ exec_cmd(struct cmd *cmd)
 	case BACK: {
 		// runs a command in background
 
-		b = (struct backcmd *) cmd;
-		exec_cmd(b->c);
+		back_command = (struct backcmd *) cmd;
+		exec_cmd(back_command->c);
 
 		break;
 	}

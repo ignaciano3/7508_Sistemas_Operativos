@@ -1,6 +1,16 @@
 #include "utils.h"
 #include <stdarg.h>
 
+
+void
+check_for_syscall_error(int syscall_return_value)
+{
+	if (syscall_return_value == ERROR_EXIT_ID) {
+		perror("Error en syscall");
+		exit(ERROR_EXIT_ID);
+	}
+}
+
 // splits a string line in two
 // according to the splitter character
 char *

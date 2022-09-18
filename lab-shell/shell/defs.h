@@ -48,4 +48,11 @@
 
 #define EXIT_SHELL 1
 
+// Exit IDs
+#define OK_EXIT_ID 0
+#define ERROR_EXIT_ID -1
+
+// Non-Zero integer to replace a value with setenv overwrite argument
+#define REPLACE_OLD_VALUE 1
+
 #endif  // DEFS_H

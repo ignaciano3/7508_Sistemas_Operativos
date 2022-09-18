@@ -3,6 +3,8 @@
 
 #include "defs.h"
 
+void check_for_syscall_error(int syscall_return_value);
+
 char *split_line(char *buf, char splitter);
 
 int block_contains(char *buf, char c);

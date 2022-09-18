@@ -48,7 +48,21 @@ get_environ_value(char *arg, char *value, int idx)
 static void
 set_environ_vars(char **eargv, int eargc)
 {
-	// Your code here
+	for (int i = 0; i < eargc; i++) {
+		int idx_in_which_it_was_found = block_contains(eargv[i], '=');
+		if (idx_in_which_it_was_found > 0) {
+			char key[BUFLEN], value[BUFLEN];
+			get_environ_key(eargv[i], key);
+			get_environ_value(eargv[i],
+			                  value,
+			                  idx_in_which_it_was_found);
+
+			int setenv_result = setenv(key, value, REPLACE_OLD_VALUE);
+			if (setenv_result == ERROR_EXIT_ID) {
+				perror("Error seteando variables de entorno");
+			}
+		}
+	}
 }
 
 // opens the file in which the stdin/stdout/stderr
@@ -87,18 +101,20 @@ exec_cmd(struct cmd *cmd)
 	switch (cmd->type) {
 	case EXEC:
 		// spawns a command
-		//
-		// Your code here
-		printf("Commands are not yet implemented\n");
-		_exit(-1);
+
+		e = (struct execcmd *) cmd;
+		set_environ_vars(e->eargv, e->eargc);
+		int exec_result = execvp(e->argv[0], e->argv);
+		check_for_syscall_error(exec_result);
+
 		break;
 
 	case BACK: {
 		// runs a command in background
-		//
-		// Your code here
-		printf("Background process are not yet implemented\n");
-		_exit(-1);
+
+		b = (struct backcmd *) cmd;
+		exec_cmd(b->c);
+
 		break;
 	}
 

@@ -78,9 +78,14 @@ set_environ_vars(char **eargv, int eargc)
 static int
 open_redir_fd(char *file, int flags)
 {
-	// Your code here
-
-	return -1;
+	int opening_result;
+	if (flags & O_CREAT) {
+		opening_result = open(file, flags, S_IWUSR | S_IRUSR);
+	} else {
+		opening_result = open(file, flags);
+	}
+	exit_check_for_generic_syscall_error(opening_result, "open");
+	return opening_result;
 }
 
 // executes a command - does not return
@@ -106,7 +111,7 @@ exec_cmd(struct cmd *cmd)
 		set_environ_vars(exec_command->eargv, exec_command->eargc);
 		int exec_result =
 		        execvp(exec_command->argv[0], exec_command->argv);
-		check_for_syscall_error(exec_result);
+		exit_check_for_generic_syscall_error(exec_result, "execvp");
 
 		break;
 
@@ -121,14 +126,44 @@ exec_cmd(struct cmd *cmd)
 
 	case REDIR: {
 		// changes the input/output/stderr flow
-		//
-		// To check if a redirection has to be performed
-		// verify if file name's length (in the execcmd struct)
-		// is greater than zero
-		//
-		// Your code here
-		printf("Redirections are not yet implemented\n");
-		_exit(-1);
+
+		if (strlen(redir_command->out_file) > 0) {  // OUT
+			int out_fd = open_redir_fd(redir_command->out_file,
+			                           O_CREAT | O_TRUNC | O_RDWR);
+
+			int dup2_return_value = dup2(out_fd, 1);
+			close(out_fd);
+			exit_check_for_generic_syscall_error(dup2_return_value,
+			                                     "dup2");
+		}
+		if (strlen(redir_command->in_file) > 0) {  // IN
+			int in_fd =
+			        open_redir_fd(redir_command->in_file, O_RDONLY);
+
+			int dup2_return_value = dup2(in_fd, 0);
+			close(in_fd);
+			exit_check_for_generic_syscall_error(dup2_return_value,
+			                                     "dup2");
+		}
+		if (strlen(redir_command->err_file) > 0) {  // ERR
+			if (strcmp(redir_command->err_file, "&1") == 0) {  //  2>&1
+				int dup2_return_value = dup2(1, 2);
+				exit_check_for_generic_syscall_error(
+				        dup2_return_value, "dup2");
+			} else {
+				int err_fd = open_redir_fd(redir_command->err_file,
+				                           O_CREAT | O_RDWR);
+
+				int dup2_return_value = dup2(err_fd, 2);
+				close(err_fd);
+				exit_check_for_generic_syscall_error(
+				        dup2_return_value, "dup2");
+			}
+		}
+
+		redir_command->type = EXEC;
+		exec_cmd((struct cmd *) redir_command);
+
 		break;
 	}
 

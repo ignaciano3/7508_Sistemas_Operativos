@@ -3,7 +3,8 @@
 
 #include "defs.h"
 
-void check_for_syscall_error(int syscall_return_value);
+void exit_check_for_generic_syscall_error(int syscall_return_value,
+                                          char *syscall_name);
 
 char *split_line(char *buf, char splitter);
 

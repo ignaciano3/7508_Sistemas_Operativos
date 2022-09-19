@@ -1,3 +1,6 @@
 - Añadida funcion en utils.c para manejo de error en las syscalls
+
 - Añadidas constantes en defs.h para identificacion de error en syscalls (-1); valores exitosos de retorno/exit (0) y valores
 de error de retorno/exit (-1); entero distinto de cero (1) para sobreescribir un valor previo con el argumento overwrite de setenv.
+
+- Renombradas variables iniciales de la funcion exec_cmd en exec.c para mejor claridad de las mismas y el acceso a sus campos.

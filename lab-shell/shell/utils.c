@@ -3,10 +3,11 @@
 
 
 void
-check_for_syscall_error(int syscall_return_value)
+exit_check_for_generic_syscall_error(int syscall_return_value, char *syscall_name)
 {
 	if (syscall_return_value == ERROR_EXIT_ID) {
-		perror("Error en syscall");
+		fprintf(stderr, "Error en syscall %s", syscall_name);
+		perror("\n");
 		exit(ERROR_EXIT_ID);
 	}
 }

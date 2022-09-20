@@ -1,4 +1,5 @@
 #include "exec.h"
+#include <stdbool.h>
 
 // sets "key" with the key part of "arg"
 // and null-terminates it
@@ -84,9 +85,24 @@ open_redir_fd(char *file, int flags)
 	} else {
 		opening_result = open(file, flags);
 	}
-	exit_check_for_generic_syscall_error(opening_result, "open");
+
 	return opening_result;
 }
+
+bool is_stdout_redir_required(struct execcmd *redir_command);
+
+bool is_stdin_redir_required(struct execcmd *redir_command);
+
+bool is_stderr_redir_required(struct execcmd *redir_command);
+
+void redirect_stdout(struct execcmd *redir_command);
+
+void redirect_stdin(struct execcmd *redir_command);
+
+void redirect_stderr(struct execcmd *redir_command);
+
+void redirect_fds_according_to_command(struct execcmd *redir_command);
+
 
 // executes a command - does not return
 //
@@ -104,17 +120,17 @@ exec_cmd(struct cmd *cmd)
 	struct pipecmd *pipe_command;
 
 	switch (cmd->type) {
-	case EXEC:
+	case EXEC: {
 		// spawns a command
 
 		exec_command = (struct execcmd *) cmd;
 		set_environ_vars(exec_command->eargv, exec_command->eargc);
 		int exec_result =
 		        execvp(exec_command->argv[0], exec_command->argv);
-		exit_check_for_generic_syscall_error(exec_result, "execvp");
+		exit_check_for_generic_syscall_error(exec_result, SYSCALL_EXEC, cmd);
 
 		break;
-
+	}
 	case BACK: {
 		// runs a command in background
 
@@ -127,39 +143,8 @@ exec_cmd(struct cmd *cmd)
 	case REDIR: {
 		// changes the input/output/stderr flow
 
-		if (strlen(redir_command->out_file) > 0) {  // OUT
-			int out_fd = open_redir_fd(redir_command->out_file,
-			                           O_CREAT | O_TRUNC | O_RDWR);
-
-			int dup2_return_value = dup2(out_fd, 1);
-			close(out_fd);
-			exit_check_for_generic_syscall_error(dup2_return_value,
-			                                     "dup2");
-		}
-		if (strlen(redir_command->in_file) > 0) {  // IN
-			int in_fd =
-			        open_redir_fd(redir_command->in_file, O_RDONLY);
-
-			int dup2_return_value = dup2(in_fd, 0);
-			close(in_fd);
-			exit_check_for_generic_syscall_error(dup2_return_value,
-			                                     "dup2");
-		}
-		if (strlen(redir_command->err_file) > 0) {  // ERR
-			if (strcmp(redir_command->err_file, "&1") == 0) {  //  2>&1
-				int dup2_return_value = dup2(1, 2);
-				exit_check_for_generic_syscall_error(
-				        dup2_return_value, "dup2");
-			} else {
-				int err_fd = open_redir_fd(redir_command->err_file,
-				                           O_CREAT | O_RDWR);
-
-				int dup2_return_value = dup2(err_fd, 2);
-				close(err_fd);
-				exit_check_for_generic_syscall_error(
-				        dup2_return_value, "dup2");
-			}
-		}
+		redir_command = (struct execcmd *) cmd;
+		redirect_fds_according_to_command(redir_command);
 
 		redir_command->type = EXEC;
 		exec_cmd((struct cmd *) redir_command);
@@ -179,5 +164,96 @@ exec_cmd(struct cmd *cmd)
 
 		break;
 	}
+	}
+}
+
+
+bool
+is_stdout_redir_required(struct execcmd *redir_command)
+{
+	return (strlen(redir_command->out_file) > 0);
+}
+
+bool
+is_stdin_redir_required(struct execcmd *redir_command)
+{
+	return (strlen(redir_command->in_file) > 0);
+}
+
+bool
+is_stderr_redir_required(struct execcmd *redir_command)
+{
+	return (strlen(redir_command->err_file) > 0);
+}
+
+void
+redirect_stdout(struct execcmd *redir_command)
+{
+	int opening_result = open_redir_fd(redir_command->out_file,
+	                                   O_CREAT | O_TRUNC | O_RDWR);
+	exit_check_for_generic_syscall_error(opening_result,
+	                                     SYSCALL_OPEN,
+	                                     (struct cmd *) redir_command);
+	int fd_to_replace_stdout = opening_result;
+
+	int dup2_result = dup2(fd_to_replace_stdout, 1);
+	close(fd_to_replace_stdout);
+	exit_check_for_generic_syscall_error(dup2_result,
+	                                     SYSCALL_DUP2,
+	                                     (struct cmd *) redir_command);
+}
+
+void
+redirect_stdin(struct execcmd *redir_command)
+{
+	int opening_result = open_redir_fd(redir_command->in_file, O_RDONLY);
+	exit_check_for_generic_syscall_error(opening_result,
+	                                     SYSCALL_OPEN,
+	                                     (struct cmd *) redir_command);
+	int fd_to_replace_stdin = opening_result;
+
+	int dup2_result = dup2(fd_to_replace_stdin, 0);
+	close(fd_to_replace_stdin);
+	exit_check_for_generic_syscall_error(dup2_result,
+	                                     SYSCALL_DUP2,
+	                                     (struct cmd *) redir_command);
+}
+
+void
+redirect_stderr(struct execcmd *redir_command)
+{
+	bool must_redir_to_current_fd_1 =
+	        (strcmp(redir_command->err_file, "&1") == 0);
+	if (must_redir_to_current_fd_1) {  //  2>&1
+		int dup2_result = dup2(1, 2);
+		exit_check_for_generic_syscall_error(
+		        dup2_result, SYSCALL_DUP2, (struct cmd *) redir_command);
+	} else {
+		int opening_result =
+		        open_redir_fd(redir_command->err_file, O_CREAT | O_RDWR);
+		exit_check_for_generic_syscall_error(opening_result,
+		                                     SYSCALL_OPEN,
+		                                     (struct cmd *) redir_command);
+		int fd_to_replace_stderr = opening_result;
+
+		int dup2_result = dup2(fd_to_replace_stderr, 2);
+		close(fd_to_replace_stderr);
+		exit_check_for_generic_syscall_error(
+		        dup2_result, SYSCALL_DUP2, (struct cmd *) redir_command);
+	}
+}
+
+
+void
+redirect_fds_according_to_command(struct execcmd *redir_command)
+{
+	if (is_stdout_redir_required(redir_command)) {
+		redirect_stdout(redir_command);
+	}
+	if (is_stdin_redir_required(redir_command)) {
+		redirect_stdin(redir_command);
+	}
+	if (is_stderr_redir_required(redir_command)) {
+		redirect_stderr(redir_command);
 	}
 }

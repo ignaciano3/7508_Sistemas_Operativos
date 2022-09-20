@@ -1,13 +1,17 @@
 #include "utils.h"
+#include "freecmd.h"
 #include <stdarg.h>
 
 
 void
-exit_check_for_generic_syscall_error(int syscall_return_value, char *syscall_name)
+exit_check_for_generic_syscall_error(int syscall_return_value,
+                                     char *syscall_name,
+                                     struct cmd *command_to_free)
 {
 	if (syscall_return_value == ERROR_EXIT_ID) {
 		fprintf(stderr, "Error en syscall %s", syscall_name);
 		perror("\n");
+		free_command(command_to_free);
 		exit(ERROR_EXIT_ID);
 	}
 }

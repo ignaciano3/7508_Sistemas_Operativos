@@ -95,26 +95,40 @@
     decir, no necesariamente stdout, ya que si el file descriptor 1 fue redirigido a otro destino entonces esta redirección también
     llegará al mismo paradero).
 
-    En el ejemplo `>out.txt 2>&1` primero se redirige la salida del fd 1 (que era `stdout`) hacia el archivo `out.txt`.
+    En el ejemplo `>out.txt 2>&1` (implementacion de bash) primero se redirige la salida del fd 1 (que era `stdout`) hacia el archivo `out.txt`.
     Luego al ejecutar `ls` de un archivo o dir que no existe va a escribir el error en el fd 2 (`stderr`) pero este fue redirigido hacia &1, entonces tanto la salida que iría a `stdout` como el error se van a guardar en `out.txt`.
+    En la implementación actual se obtiene el mismo comportamiento, conservando ese mismo orden.
 
-    `Ejemplo anterior:`
+    `Ejemplo anterior, tanto en bash como en la implementación realizada:`
     ```bash
     $ ls -C /home /noexiste >out.txt 2>&1
     $ cat out.txt
     ls: cannot access '/noexiste': No such file or directory
     /home:
-    username
+    miguelv5
     ```
 
-    Si si invierte el orden como `2>&1 >out1.txt`, primero se va a escribir el error por `stdout` (por la redirección `2>&1`), ya que hasta ese punto no se realizó la redirección `>out.txt`. 
+    Si si invierte el orden como `2>&1 >out1.txt`, el comportamiento (en la implementación de bash) es que primero se va a escribir el error por `stdout` (por la redirección `2>&1`), ya que hasta ese punto no se realizó la redirección `>out.txt`, entonces el file descriptor 1 aún correspondía a `stdout`. 
     Recién al final se realiza esa redirección, por lo cual la salida estandar de `ls` si se va a guardar en el `out.txt` y no se va a mostrar en `stdout`.
+    Este comportamiento **difiere** de la implementación actual, ya que en la misma no se verifica que el orden de las redirecciones
+    sean adaptables a su posición en el comando, siendo que bash lo interpreta de izquierda a derecha.
+    Teniendo lo anterior en cuenta, la implementación realizada se comporta como en el primer ejemplo mostrado, y no es afectada por
+    el orden de las redirecciones en el comando.  
 
-    `Ejemplo anterior:`
+    `Ejemplo anterior en bash:`
     ```bash
     $ ls -C /home /noexiste 2>&1 >out1.txt
     ls: cannot access '/noexiste': No such file or directory
     $ cat out1.txt
+    /home:
+    miguelv5
+    ```
+
+    `Ejemplo anterior en la implementación realizada:`
+    ```bash
+    $ ls -C /home /noexiste 2>&1 >out1.txt
+    $ cat out.txt
+    ls: cannot access '/noexiste': No such file or directory
     /home:
     miguelv5
     ```

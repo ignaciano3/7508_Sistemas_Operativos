@@ -55,4 +55,9 @@
 // Non-Zero integer to replace a value with setenv overwrite argument
 #define REPLACE_OLD_VALUE 1
 
+// Syscalls names for error checking
+#define SYSCALL_OPEN "open"
+#define SYSCALL_EXEC "execve"
+#define SYSCALL_DUP2 "dup2"
+
 #endif  // DEFS_H

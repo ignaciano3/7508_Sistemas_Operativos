@@ -5,3 +5,5 @@ de error de retorno/exit (-1); entero distinto de cero (1) para sobreescribir un
 strings constantes con nombre de syscalls para uso en funcion auxiliar de verificacion de fallas.
 
 - Renombradas variables iniciales de la funcion exec_cmd en exec.c para mejor claridad de las mismas y el acceso a sus campos.
+
+- Añadidos flags --track-origins=yes --track-fds=yes al target make valgrind para verificacion más robusta de memoria y file descriptors abiertos

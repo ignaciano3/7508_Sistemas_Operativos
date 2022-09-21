@@ -2,18 +2,44 @@
 #include "freecmd.h"
 #include <stdarg.h>
 
+void close_all_fds(int fds_to_close[], int amount_of_fds_to_close);
 
 void
-exit_check_for_generic_syscall_error(int syscall_return_value,
-                                     char *syscall_name,
-                                     struct cmd *command_to_free)
+close_all_fds(int fds_to_close[], int amount_of_fds_to_close)
+{
+	if (fds_to_close == NULL) {
+		return;
+	}
+
+	for (int i = 0; i < amount_of_fds_to_close; i++) {
+		close(fds_to_close[i]);
+	}
+}
+
+void
+exit_if_syscall_failed(int syscall_return_value,
+                       char *syscall_name,
+                       struct cmd *command_to_free,
+                       int fds_to_close[],
+                       int amount_of_fds_to_close)
 {
 	if (syscall_return_value == ERROR_EXIT_ID) {
-		fprintf(stderr, "Error en syscall %s", syscall_name);
-		perror("\n");
+		fprintf(stderr, "Error en syscall [%s]\n", syscall_name);
+		perror("");
+		close_all_fds(fds_to_close, amount_of_fds_to_close);
 		free_command(command_to_free);
 		exit(ERROR_EXIT_ID);
 	}
+}
+
+void
+report_and_clean_from_pipecmd_handler(char *syscall_name,
+                                      int fds_to_close[],
+                                      int amount_of_fds_to_close)
+{
+	fprintf(stderr, "Error en syscall [%s]\n", syscall_name);
+	perror("");
+	close_all_fds(fds_to_close, amount_of_fds_to_close);
 }
 
 // splits a string line in two

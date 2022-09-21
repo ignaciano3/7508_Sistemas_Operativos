@@ -103,6 +103,7 @@ void redirect_stderr(struct execcmd *redir_command);
 
 void redirect_fds_according_to_command(struct execcmd *redir_command);
 
+void handle_all_pipe_cmds_execution(struct pipecmd *pipe_command);
 
 // executes a command - does not return
 //
@@ -127,7 +128,7 @@ exec_cmd(struct cmd *cmd)
 		set_environ_vars(exec_command->eargv, exec_command->eargc);
 		int exec_result =
 		        execvp(exec_command->argv[0], exec_command->argv);
-		exit_check_for_generic_syscall_error(exec_result, SYSCALL_EXEC, cmd);
+		exit_if_syscall_failed(exec_result, SYSCALL_EXEC, cmd, NULL, 0);
 
 		break;
 	}
@@ -154,13 +155,14 @@ exec_cmd(struct cmd *cmd)
 
 	case PIPE: {
 		// pipes two commands
-		//
-		// Your code here
-		printf("Pipes are not yet implemented\n");
+
+		pipe_command = (struct pipecmd *) cmd;
+		handle_all_pipe_cmds_execution(pipe_command);
 
 		// free the memory allocated
 		// for the pipe tree structure
 		free_command(parsed_pipe);
+		exit(OK_EXIT_ID);
 
 		break;
 	}
@@ -191,32 +193,34 @@ redirect_stdout(struct execcmd *redir_command)
 {
 	int opening_result = open_redir_fd(redir_command->out_file,
 	                                   O_CREAT | O_TRUNC | O_RDWR);
-	exit_check_for_generic_syscall_error(opening_result,
-	                                     SYSCALL_OPEN,
-	                                     (struct cmd *) redir_command);
+	exit_if_syscall_failed(opening_result,
+	                       SYSCALL_OPEN,
+	                       (struct cmd *) redir_command,
+	                       NULL,
+	                       0);
 	int fd_to_replace_stdout = opening_result;
 
-	int dup2_result = dup2(fd_to_replace_stdout, 1);
+	int dup2_result = dup2(fd_to_replace_stdout, STDOUT_FILENO);
 	close(fd_to_replace_stdout);
-	exit_check_for_generic_syscall_error(dup2_result,
-	                                     SYSCALL_DUP2,
-	                                     (struct cmd *) redir_command);
+	exit_if_syscall_failed(
+	        dup2_result, SYSCALL_DUP2, (struct cmd *) redir_command, NULL, 0);
 }
 
 void
 redirect_stdin(struct execcmd *redir_command)
 {
 	int opening_result = open_redir_fd(redir_command->in_file, O_RDONLY);
-	exit_check_for_generic_syscall_error(opening_result,
-	                                     SYSCALL_OPEN,
-	                                     (struct cmd *) redir_command);
+	exit_if_syscall_failed(opening_result,
+	                       SYSCALL_OPEN,
+	                       (struct cmd *) redir_command,
+	                       NULL,
+	                       0);
 	int fd_to_replace_stdin = opening_result;
 
-	int dup2_result = dup2(fd_to_replace_stdin, 0);
+	int dup2_result = dup2(fd_to_replace_stdin, STDIN_FILENO);
 	close(fd_to_replace_stdin);
-	exit_check_for_generic_syscall_error(dup2_result,
-	                                     SYSCALL_DUP2,
-	                                     (struct cmd *) redir_command);
+	exit_if_syscall_failed(
+	        dup2_result, SYSCALL_DUP2, (struct cmd *) redir_command, NULL, 0);
 }
 
 void
@@ -225,21 +229,29 @@ redirect_stderr(struct execcmd *redir_command)
 	bool must_redir_to_current_fd_1 =
 	        (strcmp(redir_command->err_file, "&1") == 0);
 	if (must_redir_to_current_fd_1) {  //  2>&1
-		int dup2_result = dup2(1, 2);
-		exit_check_for_generic_syscall_error(
-		        dup2_result, SYSCALL_DUP2, (struct cmd *) redir_command);
+		int dup2_result = dup2(STDOUT_FILENO, STDERR_FILENO);
+		exit_if_syscall_failed(dup2_result,
+		                       SYSCALL_DUP2,
+		                       (struct cmd *) redir_command,
+		                       NULL,
+		                       0);
 	} else {
 		int opening_result =
 		        open_redir_fd(redir_command->err_file, O_CREAT | O_RDWR);
-		exit_check_for_generic_syscall_error(opening_result,
-		                                     SYSCALL_OPEN,
-		                                     (struct cmd *) redir_command);
+		exit_if_syscall_failed(opening_result,
+		                       SYSCALL_OPEN,
+		                       (struct cmd *) redir_command,
+		                       NULL,
+		                       0);
 		int fd_to_replace_stderr = opening_result;
 
-		int dup2_result = dup2(fd_to_replace_stderr, 2);
+		int dup2_result = dup2(fd_to_replace_stderr, STDERR_FILENO);
 		close(fd_to_replace_stderr);
-		exit_check_for_generic_syscall_error(
-		        dup2_result, SYSCALL_DUP2, (struct cmd *) redir_command);
+		exit_if_syscall_failed(dup2_result,
+		                       SYSCALL_DUP2,
+		                       (struct cmd *) redir_command,
+		                       NULL,
+		                       0);
 	}
 }
 
@@ -255,5 +267,69 @@ redirect_fds_according_to_command(struct execcmd *redir_command)
 	}
 	if (is_stderr_redir_required(redir_command)) {
 		redirect_stderr(redir_command);
+	}
+}
+
+
+void
+handle_all_pipe_cmds_execution(struct pipecmd *pipe_command)
+{
+	int fds[2];
+	int pipe_result = pipe(fds);
+	if (pipe_result == ERROR_EXIT_ID) {
+		report_and_clean_from_pipecmd_handler(SYSCALL_PIPE, NULL, 0);
+		return;
+	}
+
+	int fork_result_for_left_cmd = fork();
+	if (fork_result_for_left_cmd == ERROR_EXIT_ID) {
+		report_and_clean_from_pipecmd_handler(SYSCALL_FORK, fds, 2);
+		return;
+	}
+
+	if (fork_result_for_left_cmd == 0) {  // hijo izquierdo
+		close(fds[READ]);
+
+		int dup2_result = dup2(fds[WRITE], STDOUT_FILENO);
+		if (dup2_result == ERROR_EXIT_ID) {
+			report_and_clean_from_pipecmd_handler(SYSCALL_DUP2,
+			                                      &fds[WRITE],
+			                                      1);
+			return;
+		}
+
+		close(fds[WRITE]);
+		exec_cmd(pipe_command->leftcmd);
+
+	} else {
+		close(fds[WRITE]);
+
+		int fork_result_for_right_cmd = fork();
+		if (fork_result_for_right_cmd == ERROR_EXIT_ID) {
+			waitpid(fork_result_for_left_cmd, NULL, 0);
+
+			report_and_clean_from_pipecmd_handler(SYSCALL_FORK,
+			                                      &fds[READ],
+			                                      1);
+			return;
+		}
+
+		if (fork_result_for_right_cmd == 0) {  // hijo derecho
+			int dup2_result = dup2(fds[READ], STDIN_FILENO);
+			if (dup2_result == ERROR_EXIT_ID) {
+				report_and_clean_from_pipecmd_handler(
+				        SYSCALL_DUP2, &fds[READ], 1);
+				return;
+			}
+
+			close(fds[READ]);
+			exec_cmd(pipe_command->rightcmd);
+
+
+		} else {
+			close(fds[READ]);
+			waitpid(fork_result_for_left_cmd, NULL, 0);
+			waitpid(fork_result_for_right_cmd, NULL, 0);
+		}
 	}
 }

@@ -59,5 +59,8 @@
 #define SYSCALL_OPEN "open"
 #define SYSCALL_EXEC "execve"
 #define SYSCALL_DUP2 "dup2"
+#define SYSCALL_WAIT "wait"
+#define SYSCALL_PIPE "pipe"
+#define SYSCALL_FORK "fork"
 
 #endif  // DEFS_H

@@ -188,8 +188,13 @@ parse_line(char *buf)
 
 	char *right = split_line(buf, '|');
 
+	if (block_contains(right, '|') != ERROR_EXIT_ID) {
+		r = parse_line(right);
+	} else {
+		r = parse_cmd(right);
+	}
+
 	l = parse_cmd(buf);
-	r = parse_cmd(right);
 
 	return pipe_cmd_create(l, r);
 }

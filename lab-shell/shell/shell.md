@@ -33,38 +33,6 @@
 
 ---
 
-### Comandos built-in
-
-- ***¿Entre cd y pwd, alguno de los dos se podría implementar sin necesidad de ser built-in? ¿Por qué? ¿Si la respuesta es sí, cuál es el motivo, entonces, de hacerlo como built-in? (para esta última pregunta pensar en los built-in como true y false)***
-
-    `cd` debe ser built-in y no programa aparte, ya que se espera que se cambie el directorio en el que se
-    encuentra la shell, por lo cual debería efectuar el cambio sobre ese mismo proceso padre.
-
-    Podría implementarse `pwd` como programa aparte, dado que se posee la función getcwd(3) para obtener el path actual en el que se 
-    encuentre trabajando la shell. Sin embargo resulta más conveniente su implementación como built-in debido a que se pueden
-    ahorrar llamados a syscalls como fork, execve y wait (lo cual ahorra cambios de contexto, reduciendo en gran medida el
-    costo de la operación, que en principio se desearía poca).
-
----
-
-### Variables de entorno adicionales
-
-- ***¿Por qué es necesario hacerlo luego de la llamada a fork(2)?***
-
-    Esto se debe a que las variables de entorno adicionales temporales deben permanecer exclusivamente en el entorno del proceso
-    hijo, y por ende solo durante su ejecución. No deberían ser mantenidas como valores del entorno de la shell, lo cual sucede
-    si se realiza el set de las variables previo al fork.
-
-- ***En algunos de los wrappers de la familia de funciones de exec(3) (las que finalizan con la letra e), se les puede pasar un tercer argumento (o una lista de argumentos dependiendo del caso), con nuevas variables de entorno para la ejecución de ese proceso. Supongamos, entonces, que en vez de utilizar setenv(3) por cada una de las variables, se guardan en un array y se lo coloca en el tercer argumento de una de las funciones de exec(3). ¿El comportamiento resultante es el mismo que en el primer caso? Explicar qué sucede y por qué. Describir brevemente (sin implementar) una posible implementación para que el comportamiento sea el mismo.***
-
-    El comportamiento sigue siendo el mismo, siempre y cuando se adquieran manualmente todas las variables de entorno que serían
-    heredadas en el caso de usar un wrapper SIN terminación `e`. Esto podria realizarse a través de la obtencion de todos los
-    pares `CLAVE=VALOR` de la variable global `environ` (cuya documentación detallada está en el manual de linux).
-    A partir de tener un vector con todos los valores, se pueden añadir los valores necesarios que se requieran como variables
-    de entorno temporales adicionales. 
-
----
-
 ### Procesos en segundo plano
 
 - ***Detallar cuál es el mecanismo utilizado para implementar procesos en segundo plano***
@@ -139,7 +107,78 @@
 
 - ***Investigar qué ocurre con el exit code reportado por la shell si se ejecuta un pipe ¿Cambia en algo? ¿Qué ocurre si, en un pipe, alguno de los comandos falla? Mostrar evidencia (e.g. salidas de terminal) de este comportamiento usando bash. Comparar con la implementación del este lab***
 
-    a
+    - Si todos los comandos (tanto en bash como en la implementación realizada) fueron exitosos, el exit code es 0.
+    ```bash
+    $ ls -C $HOME | grep Doc | wc | xargs -n 1 echo hola
+    hola 1
+    hola 6
+    hola 67
+    $ echo $?
+    0
+
+    
+
+
+    ```
+    
+    - Sin embargo, si alguno de los comandos falla difiere el comportamiento de las implementaciones:
+    `En bash, los comandos respetan un orden de izquierda a derecha aun cuando falla alguno de los comandos. Por ende SOLO si falla el ultimo comando de la derecha se va a tener un exit code de error. En el resto de casos (donde falla un comando intermedio o el de la izquierda del todo) se van a ejecutar todos los comandos normalmente a partir del siguiente al que tuvo la falla:`
+    ```bash
+    $ ls -C $HOME | grep Doc | wc | xargs_fail -n 1 echo hola
+    xargs_fail: command not found
+    $ echo $?
+    127
+
+    $ ls -C $HOME | grep Doc | wc_fail | xargs -n 1 echo hola
+    w   c_fail: command not found
+    hola
+    $ echo $?
+    0
+
+    $ ls -C $HOME | grep_fail Doc | wc | xargs -n 1 echo hola
+    grep_fail: command not found
+    hola 0
+    hola 0
+    hola 0
+    $ echo $?
+    0
+
+    $ ls_fail -C $HOME | grep Doc | wc | xargs -n 1 echo hola
+    ls_fail: command not found
+    h   ola 0
+    hola 0
+    hola 0
+    $ echo $?
+    0
+    ```
+
+    `En la implementación realizada.`
+    ```bash
+    $ echo $?
+    ```
+
+    - 
+    ```bash
+    $ echo $?
+    ```
+
+---
+
+### Variables de entorno adicionales
+
+- ***¿Por qué es necesario hacerlo luego de la llamada a fork(2)?***
+
+    Esto se debe a que las variables de entorno adicionales temporales deben permanecer exclusivamente en el entorno del proceso
+    hijo, y por ende solo durante su ejecución. No deberían ser mantenidas como valores del entorno de la shell, lo cual sucede
+    si se realiza el set de las variables previo al fork.
+
+- ***En algunos de los wrappers de la familia de funciones de exec(3) (las que finalizan con la letra e), se les puede pasar un tercer argumento (o una lista de argumentos dependiendo del caso), con nuevas variables de entorno para la ejecución de ese proceso. Supongamos, entonces, que en vez de utilizar setenv(3) por cada una de las variables, se guardan en un array y se lo coloca en el tercer argumento de una de las funciones de exec(3). ¿El comportamiento resultante es el mismo que en el primer caso? Explicar qué sucede y por qué. Describir brevemente (sin implementar) una posible implementación para que el comportamiento sea el mismo.***
+
+    El comportamiento sigue siendo el mismo, siempre y cuando se adquieran manualmente todas las variables de entorno que serían
+    heredadas en el caso de usar un wrapper SIN terminación `e`. Esto podria realizarse a través de la obtencion de todos los
+    pares `CLAVE=VALOR` de la variable global `environ` (cuya documentación detallada está en el manual de linux).
+    A partir de tener un vector con todos los valores, se pueden añadir los valores necesarios que se requieran como variables
+    de entorno temporales adicionales. 
 
 ---
 
@@ -178,4 +217,17 @@
 
 ---
 
+### Comandos built-in
+
+- ***¿Entre cd y pwd, alguno de los dos se podría implementar sin necesidad de ser built-in? ¿Por qué? ¿Si la respuesta es sí, cuál es el motivo, entonces, de hacerlo como built-in? (para esta última pregunta pensar en los built-in como true y false)***
+
+    `cd` debe ser built-in y no programa aparte, ya que se espera que se cambie el directorio en el que se
+    encuentra la shell, por lo cual debería efectuar el cambio sobre ese mismo proceso padre.
+
+    Podría implementarse `pwd` como programa aparte, dado que se posee la función getcwd(3) para obtener el path actual en el que se 
+    encuentre trabajando la shell. Sin embargo resulta más conveniente su implementación como built-in debido a que se pueden
+    ahorrar llamados a syscalls como fork, execve y wait (lo cual ahorra cambios de contexto, reduciendo en gran medida el
+    costo de la operación, que en principio se desearía poca).
+
+---
 

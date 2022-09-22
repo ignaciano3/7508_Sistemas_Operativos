@@ -50,17 +50,19 @@ static void
 set_environ_vars(char **eargv, int eargc)
 {
 	for (int i = 0; i < eargc; i++) {
-		int idx_in_which_it_was_found = block_contains(eargv[i], '=');
-		if (idx_in_which_it_was_found > 0) {
-			char key[BUFLEN], value[BUFLEN];
-			get_environ_key(eargv[i], key);
+		int idx_previous_to_value = block_contains(eargv[i], '=');
+		if (idx_previous_to_value > 0) {
+			char env_var_key[BUFLEN], env_var_value[BUFLEN];
+			get_environ_key(eargv[i], env_var_key);
 			get_environ_value(eargv[i],
-			                  value,
-			                  idx_in_which_it_was_found);
+			                  env_var_value,
+			                  idx_previous_to_value);
 
-			int setenv_result = setenv(key, value, REPLACE_OLD_VALUE);
+			int setenv_result = setenv(env_var_key,
+			                           env_var_value,
+			                           REPLACE_OLD_VALUE);
 			if (setenv_result == ERROR_EXIT_ID) {
-				perror("Error seteando variables de entorno");
+				perror("Error seteando env vars");
 			}
 		}
 	}

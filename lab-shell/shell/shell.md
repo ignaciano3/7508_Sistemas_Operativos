@@ -39,16 +39,12 @@
 
     La implementación consiste en:
 
-    Posterior al llamado a fork, en el proceso hijo se llama recursivamente a la función `exec_cmd`. El parámetro es un `struct cmd`, el 
-    cual es nuestra abstraccion de comando generico para permitir comportamiento compartido como si se tratase de una interfaz.
+    Posterior al llamado a fork, en el proceso hijo se llama recursivamente a la función `exec_cmd`. 
 
     Teniendo en cuenta que se implementa la ejecución de procesos en segundo plano, se espera que sea posible seguir ejecutando
-    distintos procesos que sea necesario esperar de forma inmediata que el anteriormente ejecutado acabe. 
+    distintos procesos sin que sea necesario esperar de forma inmediata que el anteriormente ejecutado acabe. 
     
-    Para ello se utiliza, en el proceso padre del fork, la syscall `waitpid` con la flag `WNOHANG`, que permite un comportamiento no bloqueante en la espera de procesos
-    hijos, permitiendo continuar con la ejecución de la shell. Además se utiliza `WAIT_ANY` para esperar a cualquier proceso hijo que
-    haya quedado en segundo plano anteriormente. Este primer llamado a `waitpid` se realiza siempre, ya que justamente a pesar de que se
-    ponga en segundo plano se va a querer esperar a cualquier hijo que previamente se haya puesto en tal estado.
+    Para ello se utiliza, en el proceso padre del fork, la syscall `waitpid` con la flag `WNOHANG`, que permite un comportamiento no bloqueante en la espera de procesos hijos, permitiendo continuar con la ejecución de la shell. Además se utiliza `WAIT_ANY` para esperar a cualquier proceso hijo que haya quedado en segundo plano anteriormente. Este primer llamado a `waitpid` se realiza siempre, ya que justamente a pesar de que se ponga en segundo plano se va a querer esperar a cualquier hijo que previamente se haya puesto en tal estado.
 
     Luego si el comando parseado no requiere estar en segundo plano se realiza el otro `waitpid` (distinto), que espera de forma
     bloqueante como siempre.
@@ -115,13 +111,10 @@
     hola 67
     $ echo $?
     0
-
-    
-
-
     ```
     
     - Sin embargo, si alguno de los comandos falla difiere el comportamiento de las implementaciones:
+    
     `En bash, los comandos respetan un orden de izquierda a derecha aun cuando falla alguno de los comandos. Por ende SOLO si falla el ultimo comando de la derecha se va a tener un exit code de error. En el resto de casos (donde falla un comando intermedio o el de la izquierda del todo) se van a ejecutar todos los comandos normalmente a partir del siguiente al que tuvo la falla:`
     ```bash
     $ ls -C $HOME | grep Doc | wc | xargs_fail -n 1 echo hola
@@ -145,7 +138,7 @@
 
     $ ls_fail -C $HOME | grep Doc | wc | xargs -n 1 echo hola
     ls_fail: command not found
-    h   ola 0
+    hola 0
     hola 0
     hola 0
     $ echo $?

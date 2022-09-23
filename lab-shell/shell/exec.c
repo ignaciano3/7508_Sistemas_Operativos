@@ -258,6 +258,15 @@ redirect_stderr(struct execcmd *redir_command)
 }
 
 
+// Se encarga de todas las redirecciones requeridas en el comando.
+// En TODAS las funciones subyacentes (redirect_stdout,
+// redirect_stdin, redirect_stderr) se realizan las redirecciones
+// por medio de open_redir_fd y dup2.
+// La revision de fallas se realiza siempre por medio de la
+// funcion auxiliar exit_if_syscall_failed de utils.c,
+// donde (si efectivamente hubo falla) se libera el struct cmd y
+// se cierran todos los file descriptors especificados por
+// los dos ultimos parametros.
 void
 redirect_fds_according_to_command(struct execcmd *redir_command)
 {
@@ -273,6 +282,16 @@ redirect_fds_according_to_command(struct execcmd *redir_command)
 }
 
 
+// Maneja toda la ejecución recursiva de comandos de tipo
+// pipecmd, redireccionando adecuandamente
+// cada file descriptor estandar segun corresponda.
+// En caso de error en alguna de las syscalls
+// se muestra dicho error y se cierran los file
+// descriptors abiertos hasta el momento
+// La liberación del pipecmd es externo a esta funcion
+// (se realiza tras retornar) ya que tal proceso es
+// recursivo, y funciona adecuadamente dadas las
+// modificaciones realizadas en parse_line de parsing.c
 void
 handle_all_pipe_cmds_execution(struct pipecmd *pipe_command)
 {

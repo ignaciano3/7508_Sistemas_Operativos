@@ -117,16 +117,19 @@
     
     `En bash, los comandos respetan un orden de izquierda a derecha aun cuando falla alguno de los comandos. Por ende SOLO si falla el ultimo comando de la derecha se va a tener un exit code de error. En el resto de casos (donde falla un comando intermedio o el de la izquierda del todo) se van a ejecutar todos los comandos normalmente a partir del siguiente al que tuvo la falla:`
     ```bash
+
     $ ls -C $HOME | grep Doc | wc | xargs_fail -n 1 echo hola
     xargs_fail: command not found
     $ echo $?
     127
 
+
     $ ls -C $HOME | grep Doc | wc_fail | xargs -n 1 echo hola
-    w   c_fail: command not found
+    wc_fail: command not found
     hola
     $ echo $?
     0
+
 
     $ ls -C $HOME | grep_fail Doc | wc | xargs -n 1 echo hola
     grep_fail: command not found
@@ -136,6 +139,7 @@
     $ echo $?
     0
 
+
     $ ls_fail -C $HOME | grep Doc | wc | xargs -n 1 echo hola
     ls_fail: command not found
     hola 0
@@ -143,16 +147,68 @@
     hola 0
     $ echo $?
     0
+
     ```
 
-    `En la implementación realizada.`
+    `En la implementación realizada TAMBIEN se mantiene ese orden de ejecución, esto debido a cómo se realizan los forks y se mantiene manipulado el orden por medio de el uso de waits. Sin embargo no se mantienen los exit status debido a como está implementado printstatus.c (ignora los comandos de tipo pipecmd), por lo tanto aunque cualquiera de los comandos falle no se puede observar el exit status de error:`
     ```bash
-    $ echo $?
-    ```
 
-    - 
-    ```bash
+    (/home/miguelv5) 
+    $ ls -C $HOME | grep Doc | wc | xargs -n 1 echo hola
+    hola 1
+    hola 6
+    hola 67
+     (/home/miguelv5) 
     $ echo $?
+    0
+    	... 
+
+
+     (/home/miguelv5) 
+    $ ls -C $HOME | grep Doc | wc | xargs_fail -n 1 echo hola
+    Error en syscall [execve]
+    No such file or directory
+     (/home/miguelv5) 
+    $ echo $?  
+    0
+    	... 
+
+
+     (/home/miguelv5)
+    $ ls -C $HOME | grep Doc | wc_fail | xargs -n 1 echo hola
+    Error en syscall [execve]
+    No such file or directory
+    hola
+    (/home/miguelv5) 
+    $ echo $?
+    0
+        ... 
+
+
+    (/home/miguelv5) 
+    $ ls -C $HOME | grep_fail Doc | wc | xargs -n 1 echo hola
+    Error en syscall [execve]
+    No such file or directory
+    hola 0
+    hola 0
+    hola 0
+    (/home/miguelv5) 
+    $ echo $?
+    0
+        ... 
+
+
+    (/home/miguelv5) 
+    $ ls_fail -C $HOME | grep Doc | wc | xargs -n 1 echo hola
+    Error en syscall [execve]
+    No such file or directory
+    hola 0
+    hola 0
+    hola 0
+    (/home/miguelv5) 
+    $ echo $?
+    0
+
     ```
 
 ---

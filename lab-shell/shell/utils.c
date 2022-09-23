@@ -16,6 +16,12 @@ close_all_fds(int fds_to_close[], int amount_of_fds_to_close)
 	}
 }
 
+
+// Funcion auxiliar de manejo de errores de syscalls en general.
+// Si hubo una falla en la syscall especificada se libera el
+// struct cmd y se cierran todos los file descriptors especificados
+// por los dos ultimos parametros.
+// Luego realiza llamado a exit con id de error.
 void
 exit_if_syscall_failed(int syscall_return_value,
                        char *syscall_name,
@@ -32,6 +38,12 @@ exit_if_syscall_failed(int syscall_return_value,
 	}
 }
 
+// Funcion auxiliar encargada de cerrar todos los fds brindados en el vector,
+// ademas de reportar error de syscall.
+// Se utiliza solo en la funcion handler de pipe commands debido
+// a que dentro de la misma no se deben realizar llamados directos a exit
+// para asegurar el completo manejo de errores sin problemas de memoria/fds
+// (Esto debido al comportamiento recursivo sumado a los forks)
 void
 report_and_clean_from_pipecmd_handler(char *syscall_name,
                                       int fds_to_close[],

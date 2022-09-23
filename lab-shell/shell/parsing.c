@@ -114,12 +114,12 @@ expand_environ_var(char *arg)
 
 		char *env_var_value = getenv(arg + 1);
 		if (env_var_value == NULL) {
-			arg[0] = '\0';
+			arg[0] = END_STRING;
 			return arg;
 		}
 		size_t value_len = strlen(env_var_value);
 		if (value_len == 0) {
-			arg[0] = '\0';
+			arg[0] = END_STRING;
 			return arg;
 		}
 
@@ -161,9 +161,9 @@ parse_exec(char *buf_cmd)
 
 		tok = expand_environ_var(tok);
 
-		if (*tok != END_STRING) {
+		if (tok[0] != END_STRING) {
 			c->argv[argc++] = tok;
-		} else {
+		} else {  // Si el token actual es un un string vacio se debe liberar ya que no se va a usar
 			free(tok);
 		}
 	}

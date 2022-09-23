@@ -31,26 +31,32 @@ cd(char *cmd)
 	char *dest_directory;
 	if (strcmp(cmd, "cd\0") == 0) {
 		dest_directory = getenv("HOME");
-	} else if (strncmp(cmd, "cd ", 3) == 0) {
+	} else if (strncmp(cmd, "cd ", 3) == 0) {  // check solo de los 3 primeros
 		dest_directory = cmd + 3;
 	} else {
-		return 0;
+		return false;
 	}
 
 	int chdir_result = chdir(dest_directory);
-	if (chdir_result < 0) {
-		char buf[BUFLEN];
-		snprintf(buf, strlen(buf), "cannot cd to %s ", dest_directory);
-		status = 1;
-		perror(buf);
+	if (chdir_result == ERROR_EXIT_ID) {
+		char buf_for_error[BUFLEN];
+		sprintf(buf_for_error, "cannot cd to %s", dest_directory);
+
+		status = EXIT_FAILURE;  // Set de estado de error siguiendo convencion de bash
+		perror(buf_for_error);
+
 	} else {
-		snprintf(prompt,
-		         strlen(prompt),
-		         "%s",
-		         getcwd(dest_directory, PRMTLEN));
+		char *getcwd_result = getcwd(dest_directory, PRMTLEN);
+
+		if (getcwd_result == NULL) {
+			perror("Error en getcwd");
+			status = EXIT_FAILURE;
+		} else {
+			sprintf(prompt, "(%s)", getcwd_result);
+		}
 	}
 
-	return 1;
+	return true;
 }
 
 // returns true if 'pwd' was invoked
@@ -62,10 +68,17 @@ int
 pwd(char *cmd)
 {
 	if (strcmp(cmd, "pwd") == 0) {
-		char buf[PRMTLEN];
-		printf("%s\n", getcwd(buf, PRMTLEN));
-		status = 1;
-		return 1;
+		char buf_for_cwd[PRMTLEN];
+		char *getcwd_result = getcwd(buf_for_cwd, PRMTLEN);
+
+		if (getcwd_result == NULL) {
+			perror("Error en getcwd");
+			status = EXIT_FAILURE;  // Set de estado de error siguiendo convencion de bash
+		} else {
+			printf("%s\n", getcwd_result);
+		}
+
+		return true;
 	}
-	return 0;
+	return false;
 }

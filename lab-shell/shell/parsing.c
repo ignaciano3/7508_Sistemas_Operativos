@@ -104,20 +104,27 @@ parse_environ_var(struct execcmd *c, char *arg)
 static char *
 expand_environ_var(char *arg)
 {
-	if (arg[0] == '$') {
+	size_t arg_len = strlen(arg);
+
+	if ((arg[0] == '$') && (arg_len > 1)) {
 		if (strcmp(arg, "$?") == 0) {
 			sprintf(arg, "%i", status);
 			return arg;
 		}
 
 		char *env_var_value = getenv(arg + 1);
-		if (!env_var_value || (strlen(env_var_value) == 0)) {
-			return NULL;
+		if (env_var_value == NULL) {
+			arg[0] = '\0';
+			return arg;
+		}
+		size_t value_len = strlen(env_var_value);
+		if (value_len == 0) {
+			arg[0] = '\0';
+			return arg;
 		}
 
-		size_t value_size = strlen(env_var_value);
-		if (value_size > strlen(arg)) {
-			arg = realloc(arg, sizeof(char) * (value_size + 1));
+		if (value_len > arg_len) {
+			arg = realloc(arg, sizeof(char) * (value_len + 1));
 		}
 
 		return strcpy(arg, env_var_value);

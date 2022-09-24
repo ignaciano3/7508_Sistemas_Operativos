@@ -33,6 +33,38 @@
 
 ---
 
+### Comandos built-in
+
+- ***¿Entre cd y pwd, alguno de los dos se podría implementar sin necesidad de ser built-in? ¿Por qué? ¿Si la respuesta es sí, cuál es el motivo, entonces, de hacerlo como built-in? (para esta última pregunta pensar en los built-in como true y false)***
+
+    `cd` debe ser built-in y no programa aparte, ya que se espera que se cambie el directorio en el que se
+    encuentra la shell, por lo cual debería efectuar el cambio sobre ese mismo proceso padre.
+
+    Podría implementarse `pwd` como programa aparte, dado que se posee la función getcwd(3) para obtener el path actual en el que se 
+    encuentre trabajando la shell. Sin embargo resulta más conveniente su implementación como built-in debido a que se pueden
+    ahorrar llamados a syscalls como fork, execve y wait (lo cual ahorra cambios de contexto, reduciendo en gran medida el
+    costo de la operación, que en principio se desearía poca).
+
+---
+
+### Variables de entorno adicionales
+
+- ***¿Por qué es necesario hacerlo luego de la llamada a fork(2)?***
+
+    Esto se debe a que las variables de entorno adicionales temporales deben permanecer exclusivamente en el entorno del proceso
+    hijo, y por ende solo durante su ejecución. No deberían ser mantenidas como valores del entorno de la shell, lo cual sucede
+    si se realiza el set de las variables previo al fork.
+
+- ***En algunos de los wrappers de la familia de funciones de exec(3) (las que finalizan con la letra e), se les puede pasar un tercer argumento (o una lista de argumentos dependiendo del caso), con nuevas variables de entorno para la ejecución de ese proceso. Supongamos, entonces, que en vez de utilizar setenv(3) por cada una de las variables, se guardan en un array y se lo coloca en el tercer argumento de una de las funciones de exec(3). ¿El comportamiento resultante es el mismo que en el primer caso? Explicar qué sucede y por qué. Describir brevemente (sin implementar) una posible implementación para que el comportamiento sea el mismo.***
+
+    El comportamiento sigue siendo el mismo, siempre y cuando se adquieran manualmente todas las variables de entorno que serían
+    heredadas en el caso de usar un wrapper SIN terminación `e`. Esto podria realizarse a través de la obtencion de todos los
+    pares `CLAVE=VALOR` de la variable global `environ` (cuya documentación detallada está en el manual de linux).
+    A partir de tener un vector con todos los valores, se pueden añadir los valores necesarios que se requieran como variables
+    de entorno temporales adicionales. 
+
+---
+
 ### Procesos en segundo plano
 
 - ***Detallar cuál es el mecanismo utilizado para implementar procesos en segundo plano***
@@ -47,7 +79,8 @@
     Para ello se utiliza, en el proceso padre del fork, la syscall `waitpid` con la flag `WNOHANG`, que permite un comportamiento no bloqueante en la espera de procesos hijos, permitiendo continuar con la ejecución de la shell. Además se utiliza `WAIT_ANY` para esperar a cualquier proceso hijo que haya quedado en segundo plano anteriormente. Este primer llamado a `waitpid` se realiza siempre, ya que justamente a pesar de que se ponga en segundo plano se va a querer esperar a cualquier hijo que previamente se haya puesto en tal estado.
 
     Luego si el comando parseado no requiere estar en segundo plano se realiza el otro `waitpid` (distinto), que espera de forma
-    bloqueante como siempre.
+    bloqueante. Como este ultimo llamado espera al comando especifico (que no es BACK) recien ejecutado por medio de su PID,
+    los llamados a waitpid no interfieren entre sí, siempre esperan objetivos distintos.
 
 ---
 
@@ -213,24 +246,6 @@
 
 ---
 
-### Variables de entorno adicionales
-
-- ***¿Por qué es necesario hacerlo luego de la llamada a fork(2)?***
-
-    Esto se debe a que las variables de entorno adicionales temporales deben permanecer exclusivamente en el entorno del proceso
-    hijo, y por ende solo durante su ejecución. No deberían ser mantenidas como valores del entorno de la shell, lo cual sucede
-    si se realiza el set de las variables previo al fork.
-
-- ***En algunos de los wrappers de la familia de funciones de exec(3) (las que finalizan con la letra e), se les puede pasar un tercer argumento (o una lista de argumentos dependiendo del caso), con nuevas variables de entorno para la ejecución de ese proceso. Supongamos, entonces, que en vez de utilizar setenv(3) por cada una de las variables, se guardan en un array y se lo coloca en el tercer argumento de una de las funciones de exec(3). ¿El comportamiento resultante es el mismo que en el primer caso? Explicar qué sucede y por qué. Describir brevemente (sin implementar) una posible implementación para que el comportamiento sea el mismo.***
-
-    El comportamiento sigue siendo el mismo, siempre y cuando se adquieran manualmente todas las variables de entorno que serían
-    heredadas en el caso de usar un wrapper SIN terminación `e`. Esto podria realizarse a través de la obtencion de todos los
-    pares `CLAVE=VALOR` de la variable global `environ` (cuya documentación detallada está en el manual de linux).
-    A partir de tener un vector con todos los valores, se pueden añadir los valores necesarios que se requieran como variables
-    de entorno temporales adicionales. 
-
----
-
 ### Pseudo-variables
 
 - ***Investigar al menos otras tres variables mágicas estándar, y describir su propósito. Incluir un ejemplo de su uso en bash (u otra terminal similar)***
@@ -262,21 +277,6 @@
     $ echo $!
     70180
     ```
-
-
----
-
-### Comandos built-in
-
-- ***¿Entre cd y pwd, alguno de los dos se podría implementar sin necesidad de ser built-in? ¿Por qué? ¿Si la respuesta es sí, cuál es el motivo, entonces, de hacerlo como built-in? (para esta última pregunta pensar en los built-in como true y false)***
-
-    `cd` debe ser built-in y no programa aparte, ya que se espera que se cambie el directorio en el que se
-    encuentra la shell, por lo cual debería efectuar el cambio sobre ese mismo proceso padre.
-
-    Podría implementarse `pwd` como programa aparte, dado que se posee la función getcwd(3) para obtener el path actual en el que se 
-    encuentre trabajando la shell. Sin embargo resulta más conveniente su implementación como built-in debido a que se pueden
-    ahorrar llamados a syscalls como fork, execve y wait (lo cual ahorra cambios de contexto, reduciendo en gran medida el
-    costo de la operación, que en principio se desearía poca).
 
 ---
 

@@ -1,7 +1,14 @@
 #include "builtin.h"
+#include <stdbool.h>
 
 extern int status;
 extern char prompt[PRMTLEN];
+
+bool its_a_common_exit_cmd(char *cmd);
+
+bool its_a_common_cd_cmd(char *cmd);
+
+bool its_a_common_pwd_cmd(char *cmd);
 
 // returns true if the 'exit' call
 // should be performed
@@ -10,7 +17,7 @@ extern char prompt[PRMTLEN];
 int
 exit_shell(char *cmd)
 {
-	return (strcmp(cmd, "exit") == 0);
+	return its_a_common_exit_cmd(cmd);
 }
 
 // returns true if "chdir" was performed
@@ -29,7 +36,8 @@ int
 cd(char *cmd)
 {
 	char *dest_directory;
-	if (strcmp(cmd, "cd\0") == 0) {
+
+	if (its_a_common_cd_cmd(cmd)) {
 		dest_directory = getenv("HOME");
 	} else if (strncmp(cmd, "cd ", 3) == 0) {  // check solo de los 3 primeros
 		dest_directory = cmd + 3;
@@ -49,7 +57,7 @@ cd(char *cmd)
 		char *getcwd_result = getcwd(dest_directory, PRMTLEN);
 
 		if (getcwd_result == NULL) {
-			perror("Error en getcwd");
+			perror("Error en [getcwd]");
 			status = EXIT_FAILURE;
 		} else {
 			sprintf(prompt, "(%s)", getcwd_result);
@@ -67,12 +75,12 @@ cd(char *cmd)
 int
 pwd(char *cmd)
 {
-	if (strcmp(cmd, "pwd") == 0) {
+	if (its_a_common_pwd_cmd(cmd)) {
 		char buf_for_cwd[PRMTLEN];
 		char *getcwd_result = getcwd(buf_for_cwd, PRMTLEN);
 
 		if (getcwd_result == NULL) {
-			perror("Error en getcwd");
+			perror("Error en [getcwd]");
 			status = EXIT_FAILURE;  // Set de estado de error siguiendo convencion de bash
 		} else {
 			printf("%s\n", getcwd_result);
@@ -81,4 +89,42 @@ pwd(char *cmd)
 		return true;
 	}
 	return false;
+}
+
+
+// Devuelve true si el comando se trata de
+// un caso común de uso del builtin exit.
+// Esta deteccion es para comodidad de uso
+// exclusivamente.
+// Por ejemplo, los comandos: "exit", " exit" "exit "
+// deberian comportase de la misma manera.
+bool
+its_a_common_exit_cmd(char *cmd)
+{
+	return ((strcmp(cmd, "exit") == 0) || (strcmp(cmd, " exit") == 0) ||
+	        (strcmp(cmd, "exit ") == 0));
+}
+
+// Devuelve true si el comando se trata de
+// un caso común de uso del builtin cd.
+// Esta deteccion es para comodidad de uso
+// exclusivamente.
+// Por ejemplo, los comandos: "cd", " cd" "cd "
+bool
+its_a_common_cd_cmd(char *cmd)
+{
+	return ((strcmp(cmd, "cd") == 0) || (strcmp(cmd, " cd") == 0) ||
+	        (strcmp(cmd, "cd ") == 0));
+}
+
+// Devuelve true si el comando se trata de
+// un caso común de uso del builtin pwd.
+// Esta deteccion es para comodidad de uso
+// exclusivamente.
+// Por ejemplo, los comandos: "pwd", " pwd" "pwd "
+bool
+its_a_common_pwd_cmd(char *cmd)
+{
+	return ((strcmp(cmd, "pwd") == 0) || (strcmp(cmd, " pwd") == 0) ||
+	        (strcmp(cmd, "pwd ") == 0));
 }

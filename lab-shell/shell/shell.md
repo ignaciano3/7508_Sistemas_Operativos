@@ -57,11 +57,16 @@
 
 - ***En algunos de los wrappers de la familia de funciones de exec(3) (las que finalizan con la letra e), se les puede pasar un tercer argumento (o una lista de argumentos dependiendo del caso), con nuevas variables de entorno para la ejecución de ese proceso. Supongamos, entonces, que en vez de utilizar setenv(3) por cada una de las variables, se guardan en un array y se lo coloca en el tercer argumento de una de las funciones de exec(3). ¿El comportamiento resultante es el mismo que en el primer caso? Explicar qué sucede y por qué. Describir brevemente (sin implementar) una posible implementación para que el comportamiento sea el mismo.***
 
-    El comportamiento sigue siendo el mismo, siempre y cuando se adquieran manualmente todas las variables de entorno que serían
-    heredadas en el caso de usar un wrapper SIN terminación `e`. Esto podria realizarse a través de la obtencion de todos los
-    pares `CLAVE=VALOR` de la variable global `environ` (cuya documentación detallada está en el manual de linux).
-    A partir de tener un vector con todos los valores, se pueden añadir los valores necesarios que se requieran como variables
-    de entorno temporales adicionales. 
+    NO es el mismo comportamiento tal cual como se menciona, dado que las funciones wrappers con la terminación `e` tienen que ser provistas por
+    un arreglo que contenga TODAS las variables de entorno incluyendo las que se heredarían normalmente del proceso padre a partir de sus propias
+    variables. Mientras que el uso de `setenv` para añadir variables de entorno nuevas solo requiere, justamante, del seteo de aquellas variables
+    nuevas a adicionar.
+    Sin embargo puede llegar a obtenerse el mismo comportamiento de la siguiente manera:
+    Se adquieren manualmente todas las variables de entorno que serían heredadas en el caso de usar un wrapper SIN terminación `e`
+    (Esto puede realizarse a través de la obtencion de todos los pares `CLAVE=VALOR` de la variable global `environ` cuya documentación detallada está en
+    las paginas de manual de linux).
+    A partir de dicha obtencion, se puede construir un vector con todos los valores que deberían ser heredados, y a partir del mismo se le pueden añadir los valores necesarios que se requieran como variables de entorno temporales adicionales.
+    Una vez hecho esto se puede realizar el llamado a la funcion wrapper deseada con dicho vector como ultimo parametro.
 
 ---
 

@@ -15,7 +15,7 @@
 
 #ifdef USE_STATS
 #include "statistics.h"
-stats_t stats;
+extern stats_t stats;
 #define INCREASE_STATS(stat_name, amnt) (stats.stat_name += amnt)
 #define DECREASE_STATS(stat_name, amnt) (stats.stat_name -= amnt)
 #else
@@ -26,12 +26,13 @@ stats_t stats;
 #define MAGIC_32BIT 0xBE5A74CDU
 
 #define ALIGN4(s) (((((s) -1) >> 2) << 2) + 4)
-#define REGION2PTR(r) ((r) + 1)
+#define REGION2PTR(r) (r + 1)
 #define PTR2REGION(ptr) ((region_header_t *) ptr - 1)
 
 #define BLOCK2REGION(ptr) ((region_header_t *) (ptr + 1))
 
-#define SPLITREGION(ptr, size) ((region_header_t *) (((byte) ptr + 1) + size))
+#define SPLITREGION(ptr, size)                                                 \
+	(region_header_t *) ((byte) REGION2PTR(ptr) + size)
 
 #define KiB 1024
 #define MiB (1024 * KiB)
@@ -318,6 +319,7 @@ split_region(region_header_t *region, size_t size)
 	region_header_t *new_next_region;
 
 	new_next_region = SPLITREGION(region, size);
+	;
 	new_next_region->next = region->next;
 	new_next_region->prev = region;
 	new_next_region->size = region->size - size - sizeof(region_header_t);
@@ -458,18 +460,18 @@ is_valid_ptr(byte ptr)
 	region_header_t *region;
 
 	// ptr check
-	if (!is_ptr_into_blocks(ptr)){
+	if (!is_ptr_into_blocks(ptr)) {
 		perrorfmt("Invalid pointer\nAborted\n");
 		return false;
 	}
 
 	// region check
 	region = PTR2REGION(ptr);
-	if (region->free){
+	if (region->free) {
 		perrorfmt("Double free detected\nAborted\n");
 		return false;
-	}	
-	if(region->check_num != MAGIC_32BIT){
+	}
+	if (region->check_num != MAGIC_32BIT) {
 		perrorfmt("Invalid pointer\nAborted\n");
 		return false;
 	}
@@ -481,11 +483,12 @@ is_valid_ptr(byte ptr)
 /// @param c Valor al que sera seteada la memoria
 /// @param n Cantidad de bytes a setear
 void
-set_mem(void *ptr, unsigned char c, size_t n)
+set_mem(void *ptr, size_t c, size_t n)
 {
-	byte bptr = (byte) ptr;
+	size_t limit = n / sizeof(size_t);
+	size_t *bptr = (size_t *) ptr;
 
-	for (size_t i = 0; i < n; i++)
+	for (size_t i = 0; i < limit; i++)
 		bptr[i] = c;
 }
 
@@ -680,7 +683,7 @@ malloc(size_t size)
 	if (size < MIN_REGION_LEN)
 		size = MIN_REGION_LEN;
 
-	
+
 	INCREASE_STATS(given_amnt, size);
 
 	region = find_free_region(size);
@@ -694,7 +697,7 @@ malloc(size_t size)
 	try_split_region(region, size);
 
 	// // lo hice para ir viendo cómo va todo
-	print_blocks();
+	// print_blocks();
 
 	return REGION2PTR(region);
 }
@@ -712,7 +715,8 @@ calloc(size_t nmemb, size_t size)
 	if (!ptr)
 		return NULL;
 
-	set_mem(ptr, 0, PTR2REGION(ptr)->size);
+	set_mem(ptr, 0llu, PTR2REGION(ptr)->size);
+	void *p = ((byte) ptr) + PTR2REGION(ptr)->size;
 	return ptr;
 }
 
@@ -728,7 +732,7 @@ realloc(void *ptr, size_t size)
 	}
 
 	size = ALIGN4(size);
-	if (size + sizeof(region_header_t) > BLOCK_LG){
+	if (size + sizeof(region_header_t) > BLOCK_LG) {
 		errno = ENOMEM;
 		return NULL;
 	}
@@ -741,12 +745,9 @@ realloc(void *ptr, size_t size)
 		exit(INVALID_POINTER);
 	}
 
-	void *aux = handle_realloc(PTR2REGION(ptr), size);
+	void *new_ptr = handle_realloc(PTR2REGION(ptr), size);
 
-	// // lo hice para ir viendo cómo va todo
-	// print_blocks();
-
-	return aux;
+	return new_ptr;
 }
 
 void
@@ -769,10 +770,6 @@ free(void *ptr)
 
 	region_to_free = try_coalesce_regions(region_to_free);
 
-	if (are_all_block_free(region_to_free)){
-		printfmt("libero bloque\n");
+	if (are_all_block_free(region_to_free))
 		return_block_to_OS(region_to_free->block_header);
-	}
-		
 }
-

@@ -17,7 +17,6 @@
 
 static void boot_aps(void);
 
-
 void
 i386_init(void)
 {
@@ -49,7 +48,7 @@ i386_init(void)
 	pic_init();
 
 	// Acquire the big kernel lock before waking up APs
-	lock_kernel();	
+	lock_kernel();
 
 	// Starting non-boot CPUs
 	boot_aps();
@@ -58,27 +57,31 @@ i386_init(void)
 	// Don't touch -- used by grading script!
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 
-	// Hack horrible mal para la corrección de la parte 1.
-	// -d
-	#define STRING(x) STRNG_(x)
-	#define STRNG_(x) #x
-	#define TESTED(x) (__builtin_strcmp(#x, STRING(TEST)) == 0)
+// Hack horrible mal para la corrección de la parte 1.
+// -d
+#define STRING(x) STRNG_(x)
+#define STRNG_(x) #x
+#define TESTED(x) (__builtin_strcmp(#x, STRING(TEST)) == 0)
 
 	if (TESTED(user_yield) || TESTED(user_spin0))
 		ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
+
+#ifdef MLFQ_SCHED
 	// Touch all you want.
 	ENV_CREATE(user_hello, ENV_TYPE_USER);
+	ENV_CREATE(user_priority, ENV_TYPE_USER);
+	ENV_CREATE(user_dumbfork, ENV_TYPE_USER);
+	ENV_CREATE(user_stresssched, ENV_TYPE_USER);
+#else
 	ENV_CREATE(user_hello, ENV_TYPE_USER);
-	ENV_CREATE(user_hello, ENV_TYPE_USER);
+	ENV_CREATE(user_dumbfork, ENV_TYPE_USER);
+#endif
+
 #endif  // TEST*
 
-	// Eliminar esta llamada una vez completada la parte 1
-	// e implementado sched_yield().
-	env_run(&envs[0]);
-
 	// Schedule and run the first user environment!
-	// sched_yield();
+	sched_yield();
 }
 
 // While boot_aps is booting a given CPU, it communicates the per-core
@@ -108,7 +111,7 @@ boot_aps(void)
 		// Start the CPU at mpentry_start
 		lapic_startap(c->cpu_id, PADDR(code));
 		// Wait for the CPU to finish some basic setup in mp_main()
-		while(c->cpu_status != CPU_STARTED)
+		while (c->cpu_status != CPU_STARTED)
 			;
 	}
 }
@@ -124,7 +127,7 @@ mp_main(void)
 	lapic_init();
 	env_init_percpu();
 	trap_init_percpu();
-	xchg(&thiscpu->cpu_status, CPU_STARTED); // tell boot_aps() we're up
+	xchg(&thiscpu->cpu_status, CPU_STARTED);  // tell boot_aps() we're up
 
 	// Now that we have finished some basic setup, call sched_yield()
 	// to start running processes on this CPU.  But make sure that

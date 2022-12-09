@@ -1,6 +1,7 @@
 #  Concrete files #
 ############
 # nombres de archivos a ignorar
+#.vscode/
 
 # Compiled source #
 ###################

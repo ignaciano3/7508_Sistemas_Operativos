@@ -10,38 +10,36 @@
 #include <stdlib.h>
 #include <errno.h>
 
+#include "fs.h"
+
 static int
 fisopfs_getattr(const char *path, struct stat *st)
 {
-	printf("[debug] fisopfs_getattr(%s)\n", path);
+	printf("[debug] fisopfs_getattr with: %s\n", path);
 
-	if (strcmp(path, "/") == 0) {
-		st->st_uid = 1717;
-		st->st_mode = __S_IFDIR | 0755;
-		st->st_nlink = 2;
-	} else if (strcmp(path, "/fisop") == 0) {
-		st->st_uid = 1818;
-		st->st_mode = __S_IFREG | 0644;
-		st->st_size = 2048;
-		st->st_nlink = 1;
-	} else {
-		return -ENOENT;
-	}
+	inode_t *inode;
+	int response = search_inode(path, &inode);
+	if (response != 0)
+		return response;
+
+	st->st_mode = inode->type_mode;
+	st->st_uid = inode->user_id;
+	st->st_gid = inode->group_id;
+
+	st->st_size = inode->size;
+	st->st_blocks = inode->block_count;
+
+	st->st_atime = inode->last_access;
+	st->st_mtime = inode->last_modification;
+	st->st_ctime = inode->last_modification;
 
 	return 0;
-}
-
-
-static int
-fisopfs_readlink(const char *path, char *buf, size_t size)
-{
-	printf("[debug] fisopfs_readlink \n");
-	return -ENOENT;
 }
 
 static int
 fisopfs_mknod(const char *path, mode_t mode, dev_t rdev)
 {
+	// Make a normal file
 	printf("[debug] fisopfs_mknod \n");
 	return -ENOENT;
 }
@@ -49,6 +47,7 @@ fisopfs_mknod(const char *path, mode_t mode, dev_t rdev)
 static int
 fisopfs_mkdir(const char *path, mode_t mode)
 {
+	// Make a directory
 	printf("[debug] fisopfs_mkdir \n");
 	return -ENOENT;
 }
@@ -56,6 +55,7 @@ fisopfs_mkdir(const char *path, mode_t mode)
 static int
 fisopfs_unlink(const char *path)
 {
+	// Remove a file
 	printf("[debug] fisopfs_unlink \n");
 	return -ENOENT;
 }
@@ -63,44 +63,15 @@ fisopfs_unlink(const char *path)
 static int
 fisopfs_rmdir(const char *path)
 {
+	// Remove a directory
 	printf("[debug] fisopfs_rmdir \n");
 	return -ENOENT;
 }
 
 static int
-fisopfs_symlink(const char *to, const char *from)
-{
-	printf("[debug] fisopfs_symlink \n");
-	return -ENOENT;
-}
-
-// los parametros de symlink estan invertidos con respecto a los demas pero es asi segun la docu
-
-static int
 fisopfs_rename(const char *from, const char *to)
 {
 	printf("[debug] fisopfs_rename \n");
-	return -ENOENT;
-}
-
-static int
-fisopfs_link(const char *from, const char *to)
-{
-	printf("[debug] fisopfs_link \n");
-	return -ENOENT;
-}
-
-static int
-fisopfs_chmod(const char *path, mode_t mode)
-{
-	printf("[debug] fisopfs_chmod \n");
-	return -ENOENT;
-}
-
-static int
-fisopfs_chown(const char *path, uid_t uid, gid_t gid)
-{
-	printf("[debug] fisopfs_chown \n");
 	return -ENOENT;
 }
 
@@ -118,9 +89,6 @@ fisopfs_open(const char *path, struct fuse_file_info *fi)
 	return -ENOENT;
 }
 
-#define MAX_CONTENIDO
-static char fisop_file_contenidos[MAX_CONTENIDO] = "hola fisopfs!\n";
-
 static int
 fisopfs_read(const char *path,
              char *buffer,
@@ -129,18 +97,6 @@ fisopfs_read(const char *path,
              struct fuse_file_info *fi)
 {
 	printf("[debug] fisopfs_read(%s, %lu, %lu)\n", path, offset, size);
-
-	// Solo tenemos un archivo hardcodeado!
-	if (strcmp(path, "/fisop") != 0)
-		return -ENOENT;
-
-
-	if (offset + size > strlen(fisop_file_contenidos))
-		size = strlen(fisop_file_contenidos) - offset;
-
-	size = size > 0 ? size : 0;
-
-	strncpy(buffer, fisop_file_contenidos + offset, size);
 
 	return size;
 }
@@ -166,6 +122,7 @@ fisopfs_statfs(const char *path, struct statvfs *stbuf)
 static int
 fisopfs_flush(const char *path, struct fuse_file_info *fi)
 {
+	// Save to file
 	printf("[debug] fisopfs_flush \n");
 	return -ENOENT;
 }
@@ -184,39 +141,14 @@ fisopfs_fsync(const char *path, int isdatasync, struct fuse_file_info *fi)
 	return -ENOENT;
 }
 
-// static int
-// fisopfs_setxattr(const char *path, const char *name, const char *value, size_t size, int flags)
-// {
-// 	printf("[debug] fisopfs_setxattr \n");
-//  return -ENOENT;
-// }
-
-// static int
-// fisopfs_getxattr(const char *path, const char *name, char *value, size_t size)
-// {
-// 	printf("[debug] fisopfs_getxattr \n");
-//  return -ENOENT;
-// }
-
-// static int
-// fisopfs_listxattr(const char *path, char *list, size_t size)
-// {
-// 	printf("[debug] fisopfs_listxattr \n");
-//  return -ENOENT;
-// }
-
-// static int
-// fisopfs_removexattr(const char *path, const char *name)
-// {
-// 	printf("[debug] fisopfs_removexattr \n");
-//  return -ENOENT;
-// }
-
 static int
 fisopfs_opendir(const char *path, struct fuse_file_info *fi)
 {
-	printf("[debug] fisopfs_opendir \n");
-	return -ENOENT;
+	printf("[debug] fisopfs_opendir with: %s \n", path);
+	printf("[debug] fisopfs_opendir flags: %i \n", fi->flags);
+
+	inode_t *inode;
+	return search_inode(path, &inode);  // ver de devolver el numero de inodo
 }
 
 static int
@@ -228,25 +160,22 @@ fisopfs_readdir(const char *path,
 {
 	printf("[debug] fisopfs_readdir(%s) \n", path);
 
-	// Los directorios '.' y '..'
-	filler(buffer, ".", NULL, 0);
-	filler(buffer, "..", NULL, 0);
+	inode_t *inode;
 
-	// Si nos preguntan por el directorio raiz, solo tenemos un archivo
-	if (strcmp(path, "/") == 0) {
-		filler(buffer, "fisop", NULL, 0);
-		return 0;
-	}
+	int response = search_inode(path, &inode);
+	if (response != 0)
+		return response;
 
-	return -ENOENT;
+	return fiuba_read_dir(inode, buffer, filler);
 }
 
 
 static int
 fisopfs_releasedir(const char *path, struct fuse_file_info *fi)
 {
-	printf("[debug] fisopfs_releasedir \n");
-	return -ENOENT;
+	printf("[debug] fisopfs_releasedir with: %s\n", path);
+	printf("[debug] fisopfs_releasedir flags: %i \n", fi->flags);
+	return 0;
 }
 
 static int
@@ -260,7 +189,8 @@ static void *
 fisopfs_init(struct fuse_conn_info *conn)
 {
 	printf("[debug] fisopfs_init \n");
-	return (void *) -ENOENT;
+	init_fs();
+	return (void *) 0;
 }
 
 static void
@@ -274,8 +204,8 @@ fisopfs_access(const char *path,
                int mask)  // en la docu de hmc aparece mode como mask, aunque no
                           // se corresponde con la syscall normal (donde figura mode)
 {
-	printf("[debug] fisopfs_access \n");
-	return -ENOENT;
+	printf("[debug] fisopfs_access with: %s\n", path);
+	return 0;
 }
 
 static int
@@ -296,6 +226,8 @@ static int
 fisopfs_fgetattr(const char *path, struct stat *stbuf, struct fuse_file_info *fi)
 {
 	printf("[debug] fisopfs_fgetattr \n");
+
+
 	return -ENOENT;
 }
 
@@ -399,56 +331,41 @@ static struct fuse_operations operations = {
 	// Lo mejor para ir viendo cuales implementar es ir probando con modo
 	// debug, ahi se registran todas las llamadas.
 
-	.getattr = fisopfs_getattr,  // <--- traida en el esqueleto
+	.init = fisopfs_init,
 
-	.readlink = fisopfs_readlink,
+	.getattr = fisopfs_getattr,
+	.access = fisopfs_access,
+	.utimens = fisopfs_utimens,
+
 	.mknod = fisopfs_mknod,
-	.mkdir = fisopfs_mkdir,
 	.unlink = fisopfs_unlink,
-	.rmdir = fisopfs_rmdir,
-	// .symlink = fisopfs_symlink, // [no obligatorio]
 	.rename = fisopfs_rename,
-	// .link = fisopfs_link, // [no obligatorio]
-	// .chmod = fisopfs_chmod, // [no obligatorio]
-	// .chown = fisopfs_chown, // [no obligatorio]
 	.truncate = fisopfs_truncate,
-	//.open = fisopfs_open,
-
-	.read = fisopfs_read,  // <--- traida en el esqueleto
-
+	.open = fisopfs_open,
+	.read = fisopfs_read,
 	.write = fisopfs_write,
+	.release = fisopfs_release,
+
+	.mkdir = fisopfs_mkdir,
+	.rmdir = fisopfs_rmdir,
+	.opendir = fisopfs_opendir,
+	.readdir = fisopfs_readdir,
+	.releasedir = fisopfs_releasedir,
+
 	.statfs = fisopfs_statfs,
 	.flush = fisopfs_flush,
-	.release = fisopfs_release,
 	.fsync = fisopfs_fsync,
 
-	//.setxattr = fisopfs_setxattr, // no creo que se necesiten estos 4
-	//.getxattr = fisopfs_getxattr,
-	//.listxattr = fisopfs_listxattr,
-	//.removexattr = fisopfs_removexattr,
+	.lock = fisopfs_lock,  // Prolly not
 
-	//.opendir = fisopfs_opendir,
+	.write_buf = fisopfs_write_buf,  // What is the difference
+	.read_buf = fisopfs_read_buf,
 
-	.readdir = fisopfs_readdir,  // <--- traida en el esqueleto
+	.fallocate = fisopfs_fallocate,  // Probably not, but not too difficult
 
-	.releasedir = fisopfs_releasedir,
-	.fsyncdir = fisopfs_fsyncdir,
-	// .init = fisopfs_init,
-	// .destroy = fisopfs_destroy,
-	// .access = fisopfs_access,
-	// .create = fisopfs_create,
-	.ftruncate = fisopfs_ftruncate,
-	.fgetattr = fisopfs_fgetattr,
-	.lock = fisopfs_lock,
-	.utimens = fisopfs_utimens,
-	.bmap = fisopfs_bmap,
-	.ioctl = fisopfs_ioctl,
-	.poll = fisopfs_poll,
-	.write_buf = fisopfs_write_buf,
-	//.read_buf = fisopfs_read_buf,
-	.flock = fisopfs_flock,
-	.fallocate = fisopfs_fallocate,
+	.destroy = fisopfs_destroy,
 };
+
 
 int
 main(int argc, char *argv[])
@@ -456,5 +373,6 @@ main(int argc, char *argv[])
 	for (int i = 0; i < argc; i++) {
 		printf("%s\n", argv[i]);
 	}
+
 	return fuse_main(argc, argv, &operations, NULL);
 }

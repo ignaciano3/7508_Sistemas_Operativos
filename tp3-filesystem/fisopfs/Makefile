@@ -5,10 +5,17 @@ CFLAGS += -Wno-unused-function -Wvla
 # Flags for FUSE
 LDLIBS := $(shell pkg-config fuse --cflags --libs)
 
+SRC = $(wildcard *.c)
+
+OBJS=$(SRCS:.c=.o)
+
 # Name for the filesystem!
 FS_NAME := fisopfs
 
-all: build
+all: fs 
+
+fs: $(SRC)
+	$(CC) -g -o $(FS_NAME) $^ $(CFLAGS) $(LDLIBS)
 	
 build: $(FS_NAME)
 

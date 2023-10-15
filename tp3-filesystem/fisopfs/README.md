@@ -1,5 +1,10 @@
 # fisopfs
-Sistema de archivos tipo FUSE.
+
+Implementacion de sistema de archivos tipo FUSE.
+
+---
+
+# Informe
 
 ## Estructuras
 

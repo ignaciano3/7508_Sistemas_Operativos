@@ -1,4 +1,6 @@
-# sched.md
+# JOS ctx-sw & sched
+
+Implementacion de Context Switch y Scheduler sobre kernel de JOS.
 
 ---
 
@@ -19,6 +21,8 @@ make SCHED=mlfq <comando>
 En caso de faltar la flag, compilara por defecto con __MLFQ__. En caso de que la flag sea cualquier otra cosa, sera __Round Robin__.
 
 ---
+
+# Informe
 
 ## Context Switch
 
